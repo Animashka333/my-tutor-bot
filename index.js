@@ -1,4 +1,5 @@
 const { Telegraf } = require('telegraf');
+const http = require('http');
 
 const BOT_TOKEN = '7099638631:AAHWoLCmXPsXa3yi-RRhw9htZj-IJEI6FjA';
 const bot = new Telegraf(BOT_TOKEN);
@@ -13,6 +14,31 @@ const PHOTO_FILE_ID = 'AgACAgIAAxkBAAIK6GkUazRfErq8pL3GPs_s6f9aZvIRAAKYD2sbx7ygS
 const LESSON_1_VIDEO_ID = 'BAACAgIAAxkBAAILEmkUcZ8uZ_OqxCOvMLHMxscHMT1hAALWhAACx7yoSAABJZ0DfMLJwzYE';
 const LESSON_1_PRESENTATION_ID = 'BQACAgIAAxkBAAILEGkUcXSoiRSVlLTghiLfcgpaOZXrAALThAACx7yoSCH7jmZckm_FNgQ';
 const KEYBOARD_IMAGE_ID = 'AgACAgIAAxkBAAILAAFpFG_ClIIPp47f5Q7gVQgCXI6IOgACFgtrG8e8qEh2VPMhVfW90gEAAwIAA3gAAzYE';
+
+// ==================== HTTP СЕРВЕР ДЛЯ CRON-JOB ====================
+const server = http.createServer((req, res) => {
+  console.log('📨 Получен запрос:', req.method, req.url);
+  
+  // Обрабатываем GET запросы для пинга
+  if (req.method === 'GET') {
+    res.writeHead(200, { 
+      'Content-Type': 'text/plain',
+      'Access-Control-Allow-Origin': '*'
+    });
+    res.end('OK - Bot is alive');
+    return;
+  }
+  
+  // Обрабатываем POST запросы от Telegram
+  if (req.method === 'POST' && req.url === '/') {
+    bot.webhookCallback('/')(req, res);
+    return;
+  }
+  
+  // Все остальные запросы - 404
+  res.writeHead(404);
+  res.end('Not found');
+});
 
 // ==================== ОСНОВНЫЕ ОБРАБОТЧИКИ ====================
 
@@ -147,16 +173,25 @@ bot.on('text', (ctx) => {
 // ==================== ЗАПУСК ====================
 
 const PORT = process.env.PORT || 3000;
-bot.launch({
-  webhook: {
-    domain: 'my-tutor-bot.onrender.com',
-    port: PORT
-  }
-}).then(() => {
-  console.log('✅ Бот запущен в режиме вебхука');
-}).catch(err => {
-  console.error('❌ Ошибка запуска:', err);
+server.listen(PORT, () => {
+  console.log(`✅ Сервер запущен на порту ${PORT}`);
+  console.log(`✅ Cron-job.org может пинговать любой URL`);
+  
+  // Запускаем бота через polling
+  bot.launch().then(() => {
+    console.log('✅ Бот запущен в режиме polling');
+  }).catch(err => {
+    console.error('❌ Ошибка запуска бота:', err);
+  });
 });
 
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+process.once('SIGINT', () => {
+  console.log('🛑 Остановка...');
+  bot.stop('SIGINT');
+  server.close();
+});
+process.once('SIGTERM', () => {
+  console.log('🛑 Остановка...');
+  bot.stop('SIGTERM');
+  server.close();
+});
