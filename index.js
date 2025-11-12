@@ -15,7 +15,7 @@ const LESSON_1_VIDEO_ID = 'BAACAgIAAxkBAAILEmkUcZ8uZ_OqxCOvMLHMxscHMT1hAALWhAACx
 const LESSON_1_PRESENTATION_ID = 'BQACAgIAAxkBAAILEGkUcXSoiRSVlLTghiLfcgpaOZXrAALThAACx7yoSCH7jmZckm_FNgQ';
 const KEYBOARD_IMAGE_ID = 'AgACAgIAAxkBAAILAAFpFG_ClIIPp47f5Q7gVQgCXI6IOgACFgtrG8e8qEh2VPMhVfW90gEAAwIAA3gAAzYE';
 
-// ==================== ПРОСТОЙ HTTP СЕРВЕР ДЛЯ ПИНГА ====================
+// ==================== HTTP СЕРВЕР ДЛЯ ПИНГА ====================
 const server = http.createServer((req, res) => {
   if (req.method === 'GET' && (req.url === '/' || req.url === '/ping' || req.url === '/health')) {
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -166,12 +166,10 @@ server.listen(PORT, () => {
   console.log(`✅ Сервер запущен на порту ${PORT}`);
   console.log(`✅ Ping URL: https://my-tutor-bot.onrender.com/ping`);
   
-  bot.launch({
-    webhook: {
-      domain: 'my-tutor-bot.onrender.com',
-      port: PORT
-    }
-  }).then(() => console.log('✅ Бот запущен'));
+  // Запускаем бота через polling вместо вебхука
+  bot.launch().then(() => {
+    console.log('✅ Бот запущен в режиме polling');
+  });
 });
 
 process.once('SIGINT', () => {
