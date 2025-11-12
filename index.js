@@ -1,5 +1,4 @@
 const { Telegraf } = require('telegraf');
-const http = require('http');
 
 const BOT_TOKEN = '7099638631:AAHWoLCmXPsXa3yi-RRhw9htZj-IJEI6FjA';
 const bot = new Telegraf(BOT_TOKEN);
@@ -14,31 +13,6 @@ const PHOTO_FILE_ID = 'AgACAgIAAxkBAAIK6GkUazRfErq8pL3GPs_s6f9aZvIRAAKYD2sbx7ygS
 const LESSON_1_VIDEO_ID = 'BAACAgIAAxkBAAILEmkUcZ8uZ_OqxCOvMLHMxscHMT1hAALWhAACx7yoSAABJZ0DfMLJwzYE';
 const LESSON_1_PRESENTATION_ID = 'BQACAgIAAxkBAAILEGkUcXSoiRSVlLTghiLfcgpaOZXrAALThAACx7yoSCH7jmZckm_FNgQ';
 const KEYBOARD_IMAGE_ID = 'AgACAgIAAxkBAAILAAFpFG_ClIIPp47f5Q7gVQgCXI6IOgACFgtrG8e8qEh2VPMhVfW90gEAAwIAA3gAAzYE';
-
-// ==================== HTTP СЕРВЕР ДЛЯ UPTIMEROBOT ====================
-const server = http.createServer((req, res) => {
-  console.log('📨 Получен запрос:', req.method, req.url);
-  
-  if (req.method === 'GET') {
-    // Простой текстовый ответ для UptimeRobot
-    if (req.url === '/' || req.url === '/ping' || req.url === '/health') {
-      res.writeHead(200, { 
-        'Content-Type': 'text/plain',
-        'Access-Control-Allow-Origin': '*'
-      });
-      res.end('OK'); // UptimeRobot ищет именно "OK" или 200 статус
-      return;
-    }
-  }
-  
-  // Если не пинг - обрабатываем как вебхук Telegram
-  if (req.method === 'POST' && req.url === '/') {
-    bot.webhookCallback('/')(req, res);
-  } else {
-    res.writeHead(404);
-    res.end('Not found');
-  }
-});
 
 // ==================== ОСНОВНЫЕ ОБРАБОТЧИКИ ====================
 
@@ -173,26 +147,16 @@ bot.on('text', (ctx) => {
 // ==================== ЗАПУСК ====================
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`✅ Сервер запущен на порту ${PORT}`);
-  console.log(`✅ Ping URL: https://my-tutor-bot.onrender.com/`);
-  console.log(`✅ UptimeRobot должен проверять корневой URL`);
-  
-  // Запускаем бота
-  bot.launch().then(() => {
-    console.log('✅ Бот запущен в режиме polling');
-  }).catch(err => {
-    console.error('❌ Ошибка запуска бота:', err);
-  });
+bot.launch({
+  webhook: {
+    domain: 'my-tutor-bot.onrender.com',
+    port: PORT
+  }
+}).then(() => {
+  console.log('✅ Бот запущен в режиме вебхука');
+}).catch(err => {
+  console.error('❌ Ошибка запуска:', err);
 });
 
-process.once('SIGINT', () => {
-  console.log('🛑 Остановка...');
-  bot.stop('SIGINT');
-  server.close();
-});
-process.once('SIGTERM', () => {
-  console.log('🛑 Остановка...');
-  bot.stop('SIGTERM');
-  server.close();
-});
+process.once('SIGINT', () => bot.stop('SIGINT'));
+process.once('SIGTERM', () => bot.stop('SIGTERM'));
