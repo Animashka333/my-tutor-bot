@@ -3,6 +3,23 @@ const { Telegraf } = require('telegraf');
 const BOT_TOKEN = '7099638631:AAHWoLCmXPsXa3yi-RRhw9htZj-IJEI6FjA';
 const bot = new Telegraf(BOT_TOKEN);
 
+// ВРЕМЕННЫЙ КОД ДЛЯ ПОЛУЧЕНИЯ FILE_ID - удалить после получения
+bot.on('video', (ctx) => {
+  const fileId = ctx.message.video.file_id;
+  ctx.reply(`File ID видео: ${fileId}`);
+});
+
+bot.on('document', (ctx) => {
+  const fileId = ctx.message.document.file_id;
+  const fileName = ctx.message.document.file_name;
+  ctx.reply(`File ID документа (${fileName}): ${fileId}`);
+});
+
+bot.on('photo', (ctx) => {
+  const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
+  ctx.reply(`File ID картинки: ${fileId}`);
+});
+
 // ID приватной группы
 const GROUP_ID = '-1002008510442';
 
