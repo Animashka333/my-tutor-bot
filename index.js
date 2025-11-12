@@ -3,6 +3,19 @@ const { Telegraf } = require('telegraf');
 const BOT_TOKEN = '7099638631:AAHWoLCmXPsXa3yi-RRhw9htZj-IJEI6FjA';
 const bot = new Telegraf(BOT_TOKEN);
 
+// ==================== КОД ДЛЯ ДИАГНОСТИКИ ====================
+bot.use((ctx, next) => {
+  console.log('Получено обновление:', ctx.updateType);
+  return next();
+});
+
+// Простейший обработчик /start для тестирования
+bot.start((ctx) => {
+  console.log('Команда /start получена от пользователя:', ctx.from.id);
+  return ctx.reply('Тестовое сообщение от бота! Если видишь это - бот работает.');
+});
+// ==================== КОНЕЦ ДИАГНОСТИКИ ====================
+
 // ID приватной группы
 const GROUP_ID = '-1002008510442';
 
