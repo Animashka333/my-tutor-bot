@@ -1,9 +1,11 @@
 const { Telegraf } = require('telegraf');
+const http = require('http');
 
-// 🔑 ВСТАВЬ СВОЙ ТОКЕН ОТ @BotFather ВМЕСТО ЭТОЙ СТРОКИ!
+// 🔑 Твой токен (уже вставлен)
 const BOT_TOKEN = '7099638631:AAHWoLCmXPsXa3yi-RRhw9htZj-IJEI6FjA';
 const bot = new Telegraf(BOT_TOKEN);
 
+// Главное меню — первый шаг из твоего скриншота
 bot.start((ctx) => {
   return ctx.reply(
     'Добро пожаловать на курс! Давайте проверим, готовы ли вы к прохождению?',
@@ -17,36 +19,32 @@ bot.start((ctx) => {
   );
 });
 
-bot.action('design', (ctx) => {
-  ctx.editMessageText('🎨 Основы графического дизайна:\n— Цвет\n— Композиция\n— Типографика');
+// Обработка нажатия на кнопку "Проверить"
+bot.action('check_ready', (ctx) => {
+  ctx.editMessageText('Отлично! Вы нажали "Проверить".');
 });
 
-bot.action('video', (ctx) => {
-  ctx.editMessageText('🎥 Вот видеоурок: [ссылка на Rutube/Яндекс.Диск]');
+// 🔥 Критически важная часть: HTTP-сервер для Render
+const server = http.createServer((req, res) => {
+  // Render проверяет корень — отвечаем OK
+  if (req.method === 'GET' && req.url === '/') {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('Bot is alive!');
+  }
+  // Обработка вебхуков от Telegram
+  else if (req.method === 'POST' && req.url === '/') {
+    bot.webhookCallback('/', false)(req, res);
+  }
+  else {
+    res.writeHead(404);
+    res.end();
+  }
 });
 
-bot.action('test', (ctx) => {
-  ctx.editMessageText(
-    '❓ Вопрос 1: Что такое композиция?\n\nВыбери правильный ответ:',
-    {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: 'А) Расположение элементов', callback_data: 'ans_a' }],
-          [{ text: 'Б) Цвет фона', callback_data: 'ans_b' }]
-        ]
-      }
-    }
-  );
-});
-
-bot.action('ans_a', (ctx) => {
-  ctx.editMessageText('✅ Верно!');
-});
-
-bot.action('ans_b', (ctx) => {
-  ctx.editMessageText('❌ Неверно. Попробуй ещё раз!');
-});
-
+// Запуск сервера на порту от Render
 const PORT = process.env.PORT || 3000;
-bot.launch({ webhookPath: '/', port: PORT });
-console.log(`✅ Бот запущен на порту ${PORT}`);
+server.listen(PORT, () => {
+  console.log(`✅ Бот запущен на порту ${PORT}`);
+  // Регистрируем вебхук (автоматически подставится правильный URL)
+  bot.telegram.setWebhook(`https://my-tutor-bot.onrender.com/`);
+});
