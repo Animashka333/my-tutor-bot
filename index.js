@@ -1,7 +1,7 @@
 const { Telegraf } = require('telegraf');
 
 // 🔑 ВСТАВЬ СВОЙ ТОКЕН ОТ @BotFather ВМЕСТО ЭТОЙ СТРОКИ!
-const BOT_TOKEN = '1234567890:AAFdGxXabc123...';
+const BOT_TOKEN = '7099638631:AAHWoLCmXPsXa3yi-RRhw9htZj-IJEI6FjA';
 const bot = new Telegraf(BOT_TOKEN);
 
 bot.start((ctx) => {
