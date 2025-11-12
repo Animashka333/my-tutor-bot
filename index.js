@@ -3,23 +3,6 @@ const { Telegraf } = require('telegraf');
 const BOT_TOKEN = '7099638631:AAHWoLCmXPsXa3yi-RRhw9htZj-IJEI6FjA';
 const bot = new Telegraf(BOT_TOKEN);
 
-// ВРЕМЕННЫЙ КОД ДЛЯ ПОЛУЧЕНИЯ FILE_ID - удалить после получения
-bot.on('video', (ctx) => {
-  const fileId = ctx.message.video.file_id;
-  ctx.reply(`File ID видео: ${fileId}`);
-});
-
-bot.on('document', (ctx) => {
-  const fileId = ctx.message.document.file_id;
-  const fileName = ctx.message.document.file_name;
-  ctx.reply(`File ID документа (${fileName}): ${fileId}`);
-});
-
-bot.on('photo', (ctx) => {
-  const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
-  ctx.reply(`File ID картинки: ${fileId}`);
-});
-
 // ID приватной группы
 const GROUP_ID = '-1002008510442';
 
@@ -28,8 +11,49 @@ const GROUP_LINK = 'https://t.me/+GFITSpvrpsQxZjcy';
 const TEACHER_USERNAME = '@Irina_Burtseva_333';
 const PRESENTATIONS_LINK = 'https://drive.google.com/drive/folders/1Xz5U6rU_IKscuTj3n1_xqWdITkDMVD00?usp=sharing';
 
-// File ID картинки - максимальное качество!
+// File ID картинки учителя
 const PHOTO_FILE_ID = 'AgACAgIAAxkBAAIK6GkUazRfErq8pL3GPs_s6f9aZvIRAAKYD2sbx7ygSLgE5jB6RB5qAQADAgADeQADNgQ';
+
+// File ID для Урока 1 (РЕАЛЬНЫЕ!)
+const LESSON_1_VIDEO_ID = 'BAACAgIAAxkBAAILEmkUcZ8uZ_OqxCOvMLHMxscHMT1hAALWhAACx7yoSAABJZ0DfMLJwzYE'; // ✅ Видео урока
+const LESSON_1_PRESENTATION_ID = 'BQACAgIAAxkBAAILEGkUcXSoiRSVlLTghiLfcgpaOZXrAALThAACx7yoSCH7jmZckm_FNgQ'; // ✅ Презентация
+const KEYBOARD_IMAGE_ID = 'AgACAgIAAxkBAAILAAFpFG_ClIIPp47f5Q7gVQgCXI6IOgACFgtrG8e8qEh2VPMhVfW90gEAAwIAA3gAAzYE'; // ✅ Картинка клавиатуры
+
+// ==================== ВРЕМЕННЫЙ КОД ДЛЯ ПОЛУЧЕНИЯ FILE_ID ====================
+// УДАЛИТЕ ЭТОТ БЛОК ПОСЛЕ ПОЛУЧЕНИЯ ВСЕХ FILE_ID
+
+bot.on('video', (ctx) => {
+  const fileId = ctx.message.video.file_id;
+  ctx.reply(`🎬 File ID видео: ${fileId}`);
+});
+
+bot.on('document', (ctx) => {
+  const fileId = ctx.message.document.file_id;
+  const fileName = ctx.message.document.file_name;
+  ctx.reply(`📎 File ID документа (${fileName}): ${fileId}`);
+});
+
+bot.on('photo', (ctx) => {
+  const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
+  ctx.reply(`🖼️ File ID картинки: ${fileId}`);
+});
+
+// Команда для получения ID группы
+bot.command('groupid', (ctx) => {
+  if (ctx.chat.type !== 'private') {
+    const message = `
+📋 Информация о группе:
+ID: <code>${ctx.chat.id}</code>
+Название: ${ctx.chat.title}
+Тип: ${ctx.chat.type}
+    `;
+    return ctx.reply(message, { parse_mode: 'HTML' });
+  } else {
+    return ctx.reply('Добавьте меня в группу и используйте команду там');
+  }
+});
+
+// ==================== КОНЕЦ ВРЕМЕННОГО КОДА ====================
 
 // Обработчик команды /start
 bot.start((ctx) => {
@@ -117,14 +141,13 @@ bot.action('continue_course', async (ctx) => {
   }
 });
 
-// Обработчик кнопки "Далее" - отправляем сообщение с картинкой В МАКСИМАЛЬНОМ КАЧЕСТВЕ
+// Обработчик кнопки "Далее" - приветствие
 bot.action('next_step', async (ctx) => {
   try {
     ctx.answerCbQuery().catch(() => {});
     
-    // Отправляем картинку с file_id - максимальное качество!
     await ctx.replyWithPhoto(
-      PHOTO_FILE_ID, // ✅ File ID для максимального качества
+      PHOTO_FILE_ID,
       {
         caption: `Привет! Меня зовут Ирина Бурцева, я твой учитель! Мы будем изучать как устроен компьютер и что в нем можно делать.`,
         parse_mode: 'HTML',
@@ -168,18 +191,83 @@ bot.action('next_step', async (ctx) => {
   }
 });
 
-// Обработчик Урока 1
-bot.action('lesson_1', (ctx) => {
+// Обработчик Урока 1 - ПОЛНЫЙ КОНТЕНТ
+bot.action('lesson_1', async (ctx) => {
+  try {
+    ctx.answerCbQuery().catch(() => {});
+    
+    // 1. Отправляем видео урока
+    await ctx.replyWithVideo(
+      LESSON_1_VIDEO_ID,
+      {
+        caption: `🎬 А вот и первый урок! 😊\n\n<b>Тема:</b> Как человек и компьютер воспринимают информацию\n\nКогда посмотришь его, жми на кнопку "Просмотрено"`,
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '✅ Просмотрено', callback_data: 'lesson_1_watched' }]
+          ]
+        }
+      }
+    );
+    
+  } catch (error) {
+    console.error('Ошибка при отправке видео:', error);
+    return ctx.reply('Произошла ошибка при загрузке видео урока.');
+  }
+});
+
+// Обработчик кнопки "Просмотрено" после видео
+bot.action('lesson_1_watched', async (ctx) => {
+  try {
+    ctx.answerCbQuery().catch(() => {});
+    
+    // 2. Отправляем презентацию
+    await ctx.replyWithDocument(
+      LESSON_1_PRESENTATION_ID,
+      {
+        caption: `📎 <b>Презентация к уроку 1</b>`,
+        parse_mode: 'HTML'
+      }
+    );
+    
+    // 3. Отправляем картинку клавиатуры
+    await ctx.replyWithPhoto(
+      KEYBOARD_IMAGE_ID,
+      {
+        caption: `⌨️ <b>Дополнительный файл к уроку 1</b>\nГде какие кнопки?`,
+        parse_mode: 'HTML'
+      }
+    );
+    
+    // 4. Финальное сообщение с кнопкой завершения
+    await ctx.reply(
+      `Когда всё посмотришь и выполнишь задания, жми на кнопку "Просмотрено" 👇`,
+      {
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '✅ Всё просмотрено, иду дальше', callback_data: 'lesson_1_completed' }]
+          ]
+        }
+      }
+    );
+    
+  } catch (error) {
+    console.error('Ошибка в lesson_1_watched:', error);
+    return ctx.reply('Произошла ошибка при загрузке материалов.');
+  }
+});
+
+// Обработчик завершения Урока 1
+bot.action('lesson_1_completed', (ctx) => {
   ctx.answerCbQuery().catch(() => {});
   return ctx.reply(
-    '📚 Урок 1: Основы работы с компьютером\n\n' +
-    'Содержание урока...\n\n' +
-    'Здесь будет материал первого урока.',
+    '🎉 Поздравляю с завершением Урока 1!\n\nСледующий урок будет доступен скоро...',
     {
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [
-          [{ text: 'Следующий урок', callback_data: 'lesson_2' }]
+          [{ text: 'Урок 2', callback_data: 'lesson_2' }]
         ]
       }
     }
