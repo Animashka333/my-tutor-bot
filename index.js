@@ -1,50 +1,48 @@
 const { Telegraf } = require('telegraf');
 const http = require('http');
 
-// 🔑 Твой токен (уже вставлен)
 const BOT_TOKEN = '7099638631:AAHWoLCmXPsXa3yi-RRhw9htZj-IJEI6FjA';
 const bot = new Telegraf(BOT_TOKEN);
 
-// Главное меню — первый шаг из твоего скриншота
 bot.start((ctx) => {
   return ctx.reply(
     'Добро пожаловать на курс! Давайте проверим, готовы ли вы к прохождению?',
     {
       reply_markup: {
         inline_keyboard: [
-          [{ text: 'Проверить', callback_data: 'check_ready' }]
+          [{ text: 'Проверить', callback_ 'check_ready' }]
         ]
       }
     }
   );
 });
 
-// Обработка нажатия на кнопку "Проверить"
 bot.action('check_ready', (ctx) => {
-  ctx.editMessageText('Отлично! Вы нажали "Проверить".');
+  ctx.editMessageText('✅ Готовы! Начинаем...');
 });
 
-// 🔥 Критически важная часть: HTTP-сервер для Render
+// Создаём HTTP-сервер ВРУЧНУЮ
 const server = http.createServer((req, res) => {
-  // Render проверяет корень — отвечаем OK
   if (req.method === 'GET' && req.url === '/') {
+    // Render периодически проверяет этот путь — отвечаем быстро и просто
     res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('Bot is alive!');
+    res.end('OK');
+    return;
   }
-  // Обработка вебхуков от Telegram
-  else if (req.method === 'POST' && req.url === '/') {
+
+  if (req.method === 'POST' && req.url === '/') {
+    // Передаём запрос Telegram в Telegraf
     bot.webhookCallback('/', false)(req, res);
+    return;
   }
-  else {
-    res.writeHead(404);
-    res.end();
-  }
+
+  res.writeHead(404);
+  res.end('Not found');
 });
 
-// Запуск сервера на порту от Render
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`✅ Бот запущен на порту ${PORT}`);
-  // Регистрируем вебхук (автоматически подставится правильный URL)
-  bot.telegram.setWebhook(`https://my-tutor-bot.onrender.com/`);
+  console.log(`✅ Сервер запущен на порту ${PORT}`);
+  // Устанавливаем вебхук — ОБЯЗАТЕЛЬНО с правильным URL
+  bot.telegram.setWebhook(`https://my-tutor-bot.onrender.com/`).catch(console.error);
 });
