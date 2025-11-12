@@ -27,7 +27,7 @@ bot.action('check_ready', (ctx) => {
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [
-          [{ text: 'Продолжить', callback_ 'continue_course' }]
+          [{ text: 'Продолжить', callback_data 'continue_course' }]
         ]
       }
     }
