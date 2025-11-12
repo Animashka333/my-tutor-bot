@@ -3,19 +3,6 @@ const { Telegraf } = require('telegraf');
 const BOT_TOKEN = '7099638631:AAHWoLCmXPsXa3yi-RRhw9htZj-IJEI6FjA';
 const bot = new Telegraf(BOT_TOKEN);
 
-// ==================== КОД ДЛЯ ДИАГНОСТИКИ ====================
-bot.use((ctx, next) => {
-  console.log('Получено обновление:', ctx.updateType);
-  return next();
-});
-
-// Простейший обработчик /start для тестирования
-bot.start((ctx) => {
-  console.log('Команда /start получена от пользователя:', ctx.from.id);
-  return ctx.reply('Тестовое сообщение от бота! Если видишь это - бот работает.');
-});
-// ==================== КОНЕЦ ДИАГНОСТИКИ ====================
-
 // ID приватной группы
 const GROUP_ID = '-1002008510442';
 
@@ -28,13 +15,11 @@ const PRESENTATIONS_LINK = 'https://drive.google.com/drive/folders/1Xz5U6rU_IKsc
 const PHOTO_FILE_ID = 'AgACAgIAAxkBAAIK6GkUazRfErq8pL3GPs_s6f9aZvIRAAKYD2sbx7ygSLgE5jB6RB5qAQADAgADeQADNgQ';
 
 // File ID для Урока 1 (РЕАЛЬНЫЕ!)
-const LESSON_1_VIDEO_ID = 'BAACAgIAAxkBAAILEmkUcZ8uZ_OqxCOvMLHMxscHMT1hAALWhAACx7yoSAABJZ0DfMLJwzYE'; // ✅ Видео урока
-const LESSON_1_PRESENTATION_ID = 'BQACAgIAAxkBAAILEGkUcXSoiRSVlLTghiLfcgpaOZXrAALThAACx7yoSCH7jmZckm_FNgQ'; // ✅ Презентация
-const KEYBOARD_IMAGE_ID = 'AgACAgIAAxkBAAILAAFpFG_ClIIPp47f5Q7gVQgCXI6IOgACFgtrG8e8qEh2VPMhVfW90gEAAwIAA3gAAzYE'; // ✅ Картинка клавиатуры
+const LESSON_1_VIDEO_ID = 'BAACAgIAAxkBAAILEmkUcZ8uZ_OqxCOvMLHMxscHMT1hAALWhAACx7yoSAABJZ0DfMLJwzYE';
+const LESSON_1_PRESENTATION_ID = 'BQACAgIAAxkBAAILEGkUcXSoiRSVlLTghiLfcgpaOZXrAALThAACx7yoSCH7jmZckm_FNgQ';
+const KEYBOARD_IMAGE_ID = 'AgACAgIAAxkBAAILAAFpFG_ClIIPp47f5Q7gVQgCXI6IOgACFgtrG8e8qEh2VPMhVfW90gEAAwIAA3gAAzYE';
 
 // ==================== ВРЕМЕННЫЙ КОД ДЛЯ ПОЛУЧЕНИЯ FILE_ID ====================
-// УДАЛИТЕ ЭТОТ БЛОК ПОСЛЕ ПОЛУЧЕНИЯ ВСЕХ FILE_ID
-
 bot.on('video', (ctx) => {
   const fileId = ctx.message.video.file_id;
   ctx.reply(`🎬 File ID видео: ${fileId}`);
@@ -51,7 +36,6 @@ bot.on('photo', (ctx) => {
   ctx.reply(`🖼️ File ID картинки: ${fileId}`);
 });
 
-// Команда для получения ID группы
 bot.command('groupid', (ctx) => {
   if (ctx.chat.type !== 'private') {
     const message = `
@@ -65,11 +49,11 @@ ID: <code>${ctx.chat.id}</code>
     return ctx.reply('Добавьте меня в группу и используйте команду там');
   }
 });
-
 // ==================== КОНЕЦ ВРЕМЕННОГО КОДА ====================
 
-// Обработчик команды /start
+// ОСНОВНОЙ ОБРАБОТЧИК /start (ДОЛЖЕН БЫТЬ ПЕРВЫМ)
 bot.start((ctx) => {
+  console.log('✅ /start команда получена от:', ctx.from.first_name);
   return ctx.reply(
     'Добро пожаловать на курс! Давайте проверим, готовы ли вы к прохождению?',
     {
@@ -85,6 +69,7 @@ bot.start((ctx) => {
 // Обработчик проверки готовности
 bot.action('check_ready', (ctx) => {
   ctx.answerCbQuery().catch(() => {});
+  console.log('✅ check_ready нажата');
 
   return ctx.editMessageText(
     '🚀 Для старта курса проверьте что:\n' +
@@ -111,6 +96,7 @@ bot.action('check_ready', (ctx) => {
 bot.action('continue_course', async (ctx) => {
   try {
     ctx.answerCbQuery().catch(() => {});
+    console.log('✅ continue_course нажата');
     
     const userId = ctx.from.id;
     
@@ -158,6 +144,7 @@ bot.action('continue_course', async (ctx) => {
 bot.action('next_step', async (ctx) => {
   try {
     ctx.answerCbQuery().catch(() => {});
+    console.log('✅ next_step нажата');
     
     await ctx.replyWithPhoto(
       PHOTO_FILE_ID,
@@ -208,8 +195,8 @@ bot.action('next_step', async (ctx) => {
 bot.action('lesson_1', async (ctx) => {
   try {
     ctx.answerCbQuery().catch(() => {});
+    console.log('✅ lesson_1 нажата');
     
-    // 1. Отправляем видео урока
     await ctx.replyWithVideo(
       LESSON_1_VIDEO_ID,
       {
@@ -233,8 +220,8 @@ bot.action('lesson_1', async (ctx) => {
 bot.action('lesson_1_watched', async (ctx) => {
   try {
     ctx.answerCbQuery().catch(() => {});
+    console.log('✅ lesson_1_watched нажата');
     
-    // 2. Отправляем презентацию
     await ctx.replyWithDocument(
       LESSON_1_PRESENTATION_ID,
       {
@@ -243,7 +230,6 @@ bot.action('lesson_1_watched', async (ctx) => {
       }
     );
     
-    // 3. Отправляем картинку клавиатуры
     await ctx.replyWithPhoto(
       KEYBOARD_IMAGE_ID,
       {
@@ -252,7 +238,6 @@ bot.action('lesson_1_watched', async (ctx) => {
       }
     );
     
-    // 4. Финальное сообщение с кнопкой завершения
     await ctx.reply(
       `Когда всё посмотришь и выполнишь задания, жми на кнопку "Просмотрено" 👇`,
       {
@@ -274,6 +259,7 @@ bot.action('lesson_1_watched', async (ctx) => {
 // Обработчик завершения Урока 1
 bot.action('lesson_1_completed', (ctx) => {
   ctx.answerCbQuery().catch(() => {});
+  console.log('✅ lesson_1_completed нажата');
   return ctx.reply(
     '🎉 Поздравляю с завершением Урока 1!\n\nСледующий урок будет доступен скоро...',
     {
@@ -289,7 +275,13 @@ bot.action('lesson_1_completed', (ctx) => {
 
 // Обработчик текстовых сообщений
 bot.on('text', (ctx) => {
+  console.log('Текст получен:', ctx.message.text);
   return ctx.reply('Используйте команду /start для начала работы');
+});
+
+// Обработка ошибок
+bot.catch((err, ctx) => {
+  console.error('Ошибка бота:', err);
 });
 
 // Запуск для Render
@@ -301,6 +293,8 @@ bot.launch({
   }
 }).then(() => {
   console.log(`✅ Бот запущен на порту ${PORT}`);
+}).catch(err => {
+  console.error('❌ Ошибка запуска бота:', err);
 });
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
