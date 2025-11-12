@@ -28,10 +28,11 @@ bot.action('check_ready', (ctx) => {
     '✅ После выполнения условий нажмите кнопку "Продолжить"',
     {
       parse_mode: 'HTML',
+      disable_web_page_preview: true, // ✅ Отключаем предпросмотр ссылок
       reply_markup: {
         inline_keyboard: [
           [{ 
-            text: '📹 Посмотреть видео-инструкцию', 
+            text: 'Инструкция',  // ✅ Только текст "Инструкция"
             url: 'https://rutube.ru/video/1ee124b1c2b20ca0c471d8e249f4126d/'
           }],
           [{ text: 'Продолжить', callback_data: 'continue_course' }]
@@ -66,6 +67,5 @@ bot.launch({
   console.error('❌ Ошибка запуска:', err);
 });
 
-// Graceful shutdown
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
