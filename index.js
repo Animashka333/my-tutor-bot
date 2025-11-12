@@ -4,7 +4,7 @@ const BOT_TOKEN = '7099638631:AAHWoLCmXPsXa3yi-RRhw9htZj-IJEI6FjA';
 const bot = new Telegraf(BOT_TOKEN);
 
 // ID приватной группы (замените на реальный ID группы)
-const GROUP_ID = '-1001234567890'; // ЗАМЕНИТЕ на реальный ID вашей группы
+const GROUP_ID = 'https://t.me/+GFITSpvrpsQxZjcy'; // ЗАМЕНИТЕ на реальный ID вашей группы
 
 // Обработчик команды /start
 bot.start((ctx) => {
