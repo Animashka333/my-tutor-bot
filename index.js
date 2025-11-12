@@ -3,23 +3,16 @@ const { Telegraf } = require('telegraf');
 const BOT_TOKEN = '7099638631:AAHWoLCmXPsXa3yi-RRhw9htZj-IJEI6FjA';
 const bot = new Telegraf(BOT_TOKEN);
 
-// ВРЕМЕННЫЙ КОД - удалить после получения file_id
-bot.on('photo', (ctx) => {
-  const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
-  ctx.reply(`File ID вашей картинки: ${fileId}`);
-});
-
-
 // ID приватной группы
-const GROUP_ID = '-1002008510442'; // ✅ Ваш реальный ID группы
+const GROUP_ID = '-1002008510442';
 
 // Ссылки
-const GROUP_LINK = 'https://t.me/+GFITSpvrpsQxZjcy'; // Ссылка на группу
-const TEACHER_USERNAME = '@Irina_Burtseva_333'; // Username учителя
-const PRESENTATIONS_LINK = 'https://drive.google.com/drive/folders/1Xz5U6rU_IKscuTj3n1_xqWdITkDMVD00?usp=sharing'; // ✅ Ссылка на Google Drive с презентациями
+const GROUP_LINK = 'https://t.me/+GFITSpvrpsQxZjcy';
+const TEACHER_USERNAME = '@Irina_Burtseva_333';
+const PRESENTATIONS_LINK = 'https://drive.google.com/drive/folders/1Xz5U6rU_IKscuTj3n1_xqWdITkDMVD00?usp=sharing';
 
-// Ссылка на картинку
-const PHOTO_URL = 'https://i.postimg.cc/LnF6ykdt/image.jpg'; // ✅ Ваша реальная картинка
+// File ID картинки - максимальное качество!
+const PHOTO_FILE_ID = 'AgACAgIAAxkBAAIK6GkUazRfErq8pL3GPs_s6f9aZvIRAAKYD2sbx7ygSLgE5jB6RB5qAQADAgADeQADNgQ';
 
 // Обработчик команды /start
 bot.start((ctx) => {
@@ -67,7 +60,6 @@ bot.action('continue_course', async (ctx) => {
     
     const userId = ctx.from.id;
     
-    // Проверяем подписку пользователя на группу
     let isSubscribed = false;
     try {
       const chatMember = await ctx.telegram.getChatMember(GROUP_ID, userId);
@@ -80,7 +72,6 @@ bot.action('continue_course', async (ctx) => {
     }
 
     if (isSubscribed) {
-      // ✅ Пользователь подписан на группу
       return ctx.editMessageText(
         '✅ Отлично! Успешной учебы',
         {
@@ -93,7 +84,6 @@ bot.action('continue_course', async (ctx) => {
         }
       );
     } else {
-      // ❌ Пользователь НЕ подписан на группу
       return ctx.editMessageText(
         '❌ К сожалению мы не нашли вашу подписку на группу курса.\n\n' +
         'Пожалуйста проверьте вашу почту (вместе с чеком оплаты вам пришла ссылка на группу). Подпишитесь на группу и после подписки бот отправит вам материалы курса.\n\n' +
@@ -110,29 +100,26 @@ bot.action('continue_course', async (ctx) => {
   }
 });
 
-// Обработчик кнопки "Далее" - отправляем сообщение с картинкой и кнопками
+// Обработчик кнопки "Далее" - отправляем сообщение с картинкой В МАКСИМАЛЬНОМ КАЧЕСТВЕ
 bot.action('next_step', async (ctx) => {
   try {
     ctx.answerCbQuery().catch(() => {});
     
-    // Сначала отправляем картинку с приветствием и первыми кнопками
+    // Отправляем картинку с file_id - максимальное качество!
     await ctx.replyWithPhoto(
-      { url: PHOTO_URL }, // ✅ Используем вашу реальную картинку
+      PHOTO_FILE_ID, // ✅ File ID для максимального качества
       {
         caption: `Привет! Меня зовут Ирина Бурцева, я твой учитель! Мы будем изучать как устроен компьютер и что в нем можно делать.`,
         parse_mode: 'HTML',
         reply_markup: {
           inline_keyboard: [
-            // Кнопка группы - отдельный ряд
             [{ text: 'Написать в группу для вопросов', url: GROUP_LINK }],
-            // Кнопка учителя - отдельный ряд
             [{ text: 'Написать учителю лично', url: `https://t.me/${TEACHER_USERNAME.replace('@', '')}` }]
           ]
         }
       }
     );
     
-    // Затем отправляем текст про презентации и кнопку презентаций
     await ctx.reply(
       `Вы можете скачать презентации к каждому уроку или смотреть их в режиме онлайн тут (требуется гугл аккаунт):`,
       {
@@ -140,13 +127,12 @@ bot.action('next_step', async (ctx) => {
         disable_web_page_preview: true,
         reply_markup: {
           inline_keyboard: [
-            [{ text: 'Все презентации к урокам', url: PRESENTATIONS_LINK }] // ✅ Реальная ссылка на Google Drive
+            [{ text: 'Все презентации к урокам', url: PRESENTATIONS_LINK }]
           ]
         }
       }
     );
     
-    // Затем отправляем текст про урок и кнопку урока
     await ctx.reply(
       `Чтобы открыть урок жми на кнопку Урок 1 👇`,
       {
@@ -190,7 +176,6 @@ bot.on('text', (ctx) => {
 
 // Запуск для Render
 const PORT = process.env.PORT || 3000;
-
 bot.launch({
   webhook: {
     domain: 'my-tutor-bot.onrender.com',
@@ -198,8 +183,6 @@ bot.launch({
   }
 }).then(() => {
   console.log(`✅ Бот запущен на порту ${PORT}`);
-}).catch(err => {
-  console.error('❌ Ошибка запуска:', err);
 });
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
