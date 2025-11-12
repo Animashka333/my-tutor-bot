@@ -15,19 +15,28 @@ const LESSON_1_VIDEO_ID = 'BAACAgIAAxkBAAILEmkUcZ8uZ_OqxCOvMLHMxscHMT1hAALWhAACx
 const LESSON_1_PRESENTATION_ID = 'BQACAgIAAxkBAAILEGkUcXSoiRSVlLTghiLfcgpaOZXrAALThAACx7yoSCH7jmZckm_FNgQ';
 const KEYBOARD_IMAGE_ID = 'AgACAgIAAxkBAAILAAFpFG_ClIIPp47f5Q7gVQgCXI6IOgACFgtrG8e8qEh2VPMhVfW90gEAAwIAA3gAAzYE';
 
-// ==================== HTTP СЕРВЕР ДЛЯ ПИНГА ====================
+// ==================== HTTP СЕРВЕР ДЛЯ UPTIMEROBOT ====================
 const server = http.createServer((req, res) => {
-  if (req.method === 'GET' && (req.url === '/' || req.url === '/ping' || req.url === '/health')) {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ 
-      status: 'pong', 
-      service: 'tutor-bot',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime()
-    }));
-  } else {
-    // Для вебхука Telegram
+  console.log('📨 Получен запрос:', req.method, req.url);
+  
+  if (req.method === 'GET') {
+    // Простой текстовый ответ для UptimeRobot
+    if (req.url === '/' || req.url === '/ping' || req.url === '/health') {
+      res.writeHead(200, { 
+        'Content-Type': 'text/plain',
+        'Access-Control-Allow-Origin': '*'
+      });
+      res.end('OK'); // UptimeRobot ищет именно "OK" или 200 статус
+      return;
+    }
+  }
+  
+  // Если не пинг - обрабатываем как вебхук Telegram
+  if (req.method === 'POST' && req.url === '/') {
     bot.webhookCallback('/')(req, res);
+  } else {
+    res.writeHead(404);
+    res.end('Not found');
   }
 });
 
@@ -35,6 +44,7 @@ const server = http.createServer((req, res) => {
 
 // Главный обработчик start
 bot.start((ctx) => {
+  console.log('✅ /start от:', ctx.from.first_name);
   return ctx.reply(
     'Добро пожаловать на курс! Давайте проверим, готовы ли вы к прохождению?',
     {
@@ -85,6 +95,7 @@ bot.action('continue_course', async (ctx) => {
       );
     }
   } catch (error) {
+    console.error('Ошибка проверки подписки:', error);
     return ctx.editMessageText('Произошла ошибка. Попробуйте позже.');
   }
 });
@@ -164,19 +175,24 @@ bot.on('text', (ctx) => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`✅ Сервер запущен на порту ${PORT}`);
-  console.log(`✅ Ping URL: https://my-tutor-bot.onrender.com/ping`);
+  console.log(`✅ Ping URL: https://my-tutor-bot.onrender.com/`);
+  console.log(`✅ UptimeRobot должен проверять корневой URL`);
   
-  // Запускаем бота через polling вместо вебхука
+  // Запускаем бота
   bot.launch().then(() => {
     console.log('✅ Бот запущен в режиме polling');
+  }).catch(err => {
+    console.error('❌ Ошибка запуска бота:', err);
   });
 });
 
 process.once('SIGINT', () => {
+  console.log('🛑 Остановка...');
   bot.stop('SIGINT');
   server.close();
 });
 process.once('SIGTERM', () => {
+  console.log('🛑 Остановка...');
   bot.stop('SIGTERM');
   server.close();
 });
