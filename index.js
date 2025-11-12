@@ -1,7 +1,53 @@
 const { Telegraf } = require('telegraf');
+const express = require('express');
 
 const BOT_TOKEN = '7099638631:AAHWoLCmXPsXa3yi-RRhw9htZj-IJEI6FjA';
 const bot = new Telegraf(BOT_TOKEN);
+const app = express();
+
+// ==================== ПИНГ-ЭНДПОИНТЫ ДЛЯ UPTIMEROBOT ====================
+app.get('/', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Tutor Bot</title>
+        <style>
+          body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+          .status { color: green; font-weight: bold; }
+        </style>
+    </head>
+    <body>
+        <h1>🤖 Tutor Bot Active</h1>
+        <p>Status: <span class="status">✅ Running</span></p>
+        <p>Time: ${new Date().toISOString()}</p>
+        <p>Uptime: ${Math.floor(process.uptime())} seconds</p>
+        <p><a href="/ping">Ping Check</a> | <a href="/health">Health Check</a></p>
+    </body>
+    </html>
+  `);
+});
+
+app.get('/ping', (req, res) => {
+  res.json({ 
+    status: 'pong', 
+    timestamp: new Date().toISOString(),
+    service: 'tutor-bot',
+    uptime: Math.floor(process.uptime()) + ' seconds'
+  });
+});
+
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'healthy',
+    bot: 'online', 
+    timestamp: new Date().toISOString(),
+    platform: process.platform,
+    node_version: process.version
+  });
+});
+
+// ==================== КОНФИГУРАЦИЯ ====================
 
 // ID приватной группы
 const GROUP_ID = '-1002008510442';
@@ -14,44 +60,14 @@ const PRESENTATIONS_LINK = 'https://drive.google.com/drive/folders/1Xz5U6rU_IKsc
 // File ID картинки учителя
 const PHOTO_FILE_ID = 'AgACAgIAAxkBAAIK6GkUazRfErq8pL3GPs_s6f9aZvIRAAKYD2sbx7ygSLgE5jB6RB5qAQADAgADeQADNgQ';
 
-// File ID для Урока 1 (РЕАЛЬНЫЕ!)
+// File ID для Урока 1
 const LESSON_1_VIDEO_ID = 'BAACAgIAAxkBAAILEmkUcZ8uZ_OqxCOvMLHMxscHMT1hAALWhAACx7yoSAABJZ0DfMLJwzYE';
 const LESSON_1_PRESENTATION_ID = 'BQACAgIAAxkBAAILEGkUcXSoiRSVlLTghiLfcgpaOZXrAALThAACx7yoSCH7jmZckm_FNgQ';
 const KEYBOARD_IMAGE_ID = 'AgACAgIAAxkBAAILAAFpFG_ClIIPp47f5Q7gVQgCXI6IOgACFgtrG8e8qEh2VPMhVfW90gEAAwIAA3gAAzYE';
 
-// ==================== ВРЕМЕННЫЙ КОД ДЛЯ ПОЛУЧЕНИЯ FILE_ID ====================
-bot.on('video', (ctx) => {
-  const fileId = ctx.message.video.file_id;
-  ctx.reply(`🎬 File ID видео: ${fileId}`);
-});
+// ==================== ОСНОВНОЙ КОД БОТА ====================
 
-bot.on('document', (ctx) => {
-  const fileId = ctx.message.document.file_id;
-  const fileName = ctx.message.document.file_name;
-  ctx.reply(`📎 File ID документа (${fileName}): ${fileId}`);
-});
-
-bot.on('photo', (ctx) => {
-  const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
-  ctx.reply(`🖼️ File ID картинки: ${fileId}`);
-});
-
-bot.command('groupid', (ctx) => {
-  if (ctx.chat.type !== 'private') {
-    const message = `
-📋 Информация о группе:
-ID: <code>${ctx.chat.id}</code>
-Название: ${ctx.chat.title}
-Тип: ${ctx.chat.type}
-    `;
-    return ctx.reply(message, { parse_mode: 'HTML' });
-  } else {
-    return ctx.reply('Добавьте меня в группу и используйте команду там');
-  }
-});
-// ==================== КОНЕЦ ВРЕМЕННОГО КОДА ====================
-
-// ОСНОВНОЙ ОБРАБОТЧИК /start (ДОЛЖЕН БЫТЬ ПЕРВЫМ)
+// ОСНОВНОЙ ОБРАБОТЧИК /start
 bot.start((ctx) => {
   console.log('✅ /start команда получена от:', ctx.from.first_name);
   return ctx.reply(
@@ -276,25 +292,66 @@ bot.action('lesson_1_completed', (ctx) => {
 // Обработчик текстовых сообщений
 bot.on('text', (ctx) => {
   console.log('Текст получен:', ctx.message.text);
-  return ctx.reply('Используйте команду /start для начала работы');
-});
-
-// Обработка ошибок
-bot.catch((err, ctx) => {
-  console.error('Ошибка бота:', err);
-});
-
-// Запуск для Render
-const PORT = process.env.PORT || 3000;
-bot.launch({
-  webhook: {
-    domain: 'my-tutor-bot.onrender.com',
-    port: PORT
+  if (!ctx.message.text.startsWith('/')) {
+    return ctx.reply('Используйте команду /start для начала работы');
   }
-}).then(() => {
-  console.log(`✅ Бот запущен на порту ${PORT}`);
-}).catch(err => {
-  console.error('❌ Ошибка запуска бота:', err);
+});
+
+// ==================== ВРЕМЕННЫЙ КОД ДЛЯ FILE_ID ====================
+bot.on('video', (ctx) => {
+  if (!ctx.message.reply_to_message) {
+    const fileId = ctx.message.video.file_id;
+    ctx.reply(`🎬 File ID видео: ${fileId}`);
+  }
+});
+
+bot.on('document', (ctx) => {
+  if (!ctx.message.reply_to_message) {
+    const fileId = ctx.message.document.file_id;
+    const fileName = ctx.message.document.file_name;
+    ctx.reply(`📎 File ID документа (${fileName}): ${fileId}`);
+  }
+});
+
+bot.on('photo', (ctx) => {
+  if (!ctx.message.reply_to_message) {
+    const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
+    ctx.reply(`🖼️ File ID картинки: ${fileId}`);
+  }
+});
+
+bot.command('getgroupid', (ctx) => {
+  if (ctx.chat.type !== 'private') {
+    const message = `
+📋 Информация о группе:
+ID: <code>${ctx.chat.id}</code>
+Название: ${ctx.chat.title}
+Тип: ${ctx.chat.type}
+    `;
+    return ctx.reply(message, { parse_mode: 'HTML' });
+  }
+});
+
+// ==================== ЗАПУСК СЕРВЕРА ====================
+
+app.use(bot.webhookCallback('/'));
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`✅ Сервер запущен на порту ${PORT}`);
+  console.log(`✅ Ping URL: https://my-tutor-bot.onrender.com/ping`);
+  console.log(`✅ Health check: https://my-tutor-bot.onrender.com/health`);
+  
+  bot.launch({
+    webhook: {
+      domain: 'my-tutor-bot.onrender.com',
+      port: PORT
+    }
+  }).then(() => {
+    console.log(`✅ Бот запущен в режиме вебхука`);
+  }).catch(err => {
+    console.error('❌ Ошибка запуска бота:', err);
+  });
 });
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
