@@ -6,10 +6,10 @@ const bot = new Telegraf(BOT_TOKEN);
 // ID приватной группы
 const GROUP_ID = '-1002008510442'; // ✅ Ваш реальный ID группы
 
-// Ссылки (замените на реальные)
+// Ссылки
 const GROUP_LINK = 'https://t.me/+GFITSpvrpsQxZjcy'; // Ссылка на группу
 const TEACHER_USERNAME = '@Irina_Burtseva_333'; // Username учителя
-const PRESENTATIONS_LINK = 'https://drive.google.com/your-link-here'; // Ссылка на Google Drive с презентациями
+const PRESENTATIONS_LINK = 'https://drive.google.com/drive/folders/1Xz5U6rU_IKscuTj3n1_xqWdITkDMVD00?usp=sharing'; // ✅ Ссылка на Google Drive с презентациями
 
 // Ссылка на картинку
 const PHOTO_URL = 'https://i.postimg.cc/LnF6ykdt/image.jpg'; // ✅ Ваша реальная картинка
@@ -133,7 +133,7 @@ bot.action('next_step', async (ctx) => {
         disable_web_page_preview: true,
         reply_markup: {
           inline_keyboard: [
-            [{ text: 'Все презентации к урокам', url: PRESENTATIONS_LINK }]
+            [{ text: 'Все презентации к урокам', url: PRESENTATIONS_LINK }] // ✅ Реальная ссылка на Google Drive
           ]
         }
       }
