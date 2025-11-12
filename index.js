@@ -1,25 +1,22 @@
 const { Telegraf } = require('telegraf');
 const http = require('http');
 
-// 🔑 Твой токен (уже вставлен и проверен)
 const BOT_TOKEN = '7099638631:AAHWoLCmXPsXa3yi-RRhw9htZj-IJEI6FjA';
 const bot = new Telegraf(BOT_TOKEN);
 
-// Шаг 1: /start
 bot.start((ctx) => {
   return ctx.reply(
     'Добро пожаловать на курс! Давайте проверим, готовы ли вы к прохождению?',
     {
       reply_markup: {
         inline_keyboard: [
-          [{ text: 'Проверить', callback_:'check_ready' }]
+          [{ text: 'Проверить', callback_ 'check_ready' }]
         ]
       }
     }
   );
 });
 
-// Шаг 2: после нажатия "Проверить"
 bot.action('check_ready', (ctx) => {
   ctx.editMessageText(
     '🚀 Для старта курса проверьте что:\n' +
@@ -30,19 +27,17 @@ bot.action('check_ready', (ctx) => {
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [
-          [{ text: 'Продолжить', callback_:'continue_course' }]
+          [{ text: 'Продолжить', callback_ 'continue_course' }]
         ]
       }
     }
   );
 });
 
-// Шаг 3: после "Продолжить" — пока заглушка (добавим по твоему скрину №3)
 bot.action('continue_course', (ctx) => {
   ctx.editMessageText('Отлично! Следующий шаг будет здесь. Присылай скрин №3!');
 });
 
-// 🔥 HTTP-сервер для Render (обязательно!)
 const server = http.createServer((req, res) => {
   if (req.method === 'GET' && req.url === '/') {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
