@@ -12,7 +12,7 @@ bot.start((ctx) => {
     {
       reply_markup: {
         inline_keyboard: [
-          [{ text: 'Проверить', callback_ 'check_ready' }]
+          [{ text: 'Проверить', callback_:'check_ready' }]
         ]
       }
     }
@@ -30,7 +30,7 @@ bot.action('check_ready', (ctx) => {
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [
-          [{ text: 'Продолжить', callback_ 'continue_course' }]
+          [{ text: 'Продолжить', callback_:'continue_course' }]
         ]
       }
     }
