@@ -52,6 +52,13 @@ const server = http.createServer((req, res) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`✅ Бот запущен на порту ${PORT}`);
-  bot.telegram.setWebhook(`https://my-tutor-bot.onrender.com/`).catch(console.error);
+  console.log(`✅ Сервер запущен на порту ${PORT}`);
+  
+  // Устанавливаем вебхук с безопасной обработкой ошибок
+  bot.telegram.setWebhook(`https://my-tutor-bot.onrender.com/`)
+    .then(() => console.log('✅ Webhook установлен'))
+    .catch(err => {
+      console.error('⚠️ Не удалось установить вебхук:', err.message);
+      // Но не завершаем процесс! Бот всё равно будет работать через polling (в крайнем случае)
+    });
 });
