@@ -6,13 +6,11 @@ const bot = new Telegraf(BOT_TOKEN);
 
 bot.start((ctx) => {
   return ctx.reply(
-    'Привет! 👋\nВыбери тему:',
+    'Добро пожаловать на курс! Давайте проверим, готовы ли вы к прохождению?',
     {
       reply_markup: {
         inline_keyboard: [
-          [{ text: '🎨 Основы дизайна', callback_data: 'design' }],
-          [{ text: '🎥 Видеоурок', callback_data: 'video' }],
-          [{ text: '❓ Тест', callback_data: 'test' }]
+          [{ text: 'Проверить', callback_data: 'check_ready' }]
         ]
       }
     }
