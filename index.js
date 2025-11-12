@@ -1,5 +1,4 @@
 const { Telegraf } = require('telegraf');
-const http = require('http');
 
 const BOT_TOKEN = '7099638631:AAHWoLCmXPsXa3yi-RRhw9htZj-IJEI6FjA';
 const bot = new Telegraf(BOT_TOKEN);
@@ -11,7 +10,7 @@ bot.start((ctx) => {
     {
       reply_markup: {
         inline_keyboard: [
-          [{ text: 'Проверить', callback_data: 'check_ready' }] // ДОБАВЛЕНО двоеточие!
+          [{ text: 'Проверить', callback_data: 'check_ready' }] // ✅ Исправлено: добавлено :
         ]
       }
     }
@@ -20,8 +19,7 @@ bot.start((ctx) => {
 
 // Обработчик проверки готовности
 bot.action('check_ready', (ctx) => {
-  // Обязательно отвечаем на callback запрос
-  ctx.answerCbQuery().catch(() => {}); // Игнорируем ошибки, если запрос уже обработан
+  ctx.answerCbQuery().catch(() => {}); // Ответ на callback
   
   return ctx.editMessageText(
     '🚀 Для старта курса проверьте что:\n' +
@@ -32,7 +30,7 @@ bot.action('check_ready', (ctx) => {
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [
-          [{ text: 'Продолжить', callback_data: 'continue_course' }] // ДОБАВЛЕНО двоеточие!
+          [{ text: 'Продолжить', callback_data: 'continue_course' }] // ✅ Исправлено: добавлено :
         ]
       }
     }
@@ -50,60 +48,26 @@ bot.on('text', (ctx) => {
   return ctx.reply('Используйте команду /start для начала работы');
 });
 
-// Создаем HTTP сервер
-const server = http.createServer((req, res) => {
-  if (req.method === 'GET' && req.url === '/') {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('Bot is running!');
-  } else if (req.method === 'POST' && req.url === `/${BOT_TOKEN}`) {
-    // Для вебхуков Telegram отправляет запросы на /<token>
-    bot.webhookCallback(`/${BOT_TOKEN}`)(req, res);
-  } else if (req.method === 'POST' && req.url === '/') {
-    // Альтернативный endpoint
-    bot.webhookCallback('/')(req, res);
-  } else {
-    res.writeHead(404);
-    res.end('Not found');
-  }
+// Обработка ошибок
+bot.catch((err, ctx) => {
+  console.error(`Ошибка для ${ctx.updateType}:`, err);
 });
 
+// Запуск для Render
 const PORT = process.env.PORT || 3000;
 
-server.listen(PORT, () => {
-  console.log(`✅ Сервер запущен на порту ${PORT}`);
-  
-  // Для Render лучше использовать встроенный launch с вебхуком
-  const webhookUrl = `https://my-tutor-bot.onrender.com/${BOT_TOKEN}`;
-  
-  bot.launch({
-    webhook: {
-      domain: 'my-tutor-bot.onrender.com',
-      port: PORT,
-      hookPath: `/${BOT_TOKEN}`
-    }
-  }).then(() => {
-    console.log('✅ Бот запущен в режиме вебхука');
-  }).catch(err => {
-    console.error('❌ Ошибка запуска бота:', err.message);
-    // Запускаем в режиме polling как fallback
-    console.log('🔄 Пытаемся запустить в режиме polling...');
-    bot.launch().then(() => {
-      console.log('✅ Бот запущен в режиме polling');
-    }).catch(pollingErr => {
-      console.error('❌ Критическая ошибка:', pollingErr.message);
-    });
-  });
+// Простой запуск с вебхуком
+bot.launch({
+  webhook: {
+    domain: 'my-tutor-bot.onrender.com',
+    port: PORT
+  }
+}).then(() => {
+  console.log(`✅ Бот запущен на порту ${PORT}`);
+}).catch(err => {
+  console.error('❌ Ошибка запуска:', err);
 });
 
 // Graceful shutdown
-process.once('SIGINT', () => {
-  console.log('🛑 Остановка бота...');
-  bot.stop('SIGINT');
-  server.close();
-});
-
-process.once('SIGTERM', () => {
-  console.log('🛑 Остановка бота...');
-  bot.stop('SIGTERM');
-  server.close();
-});
+process.once('SIGINT', () => bot.stop('SIGINT'));
+process.once('SIGTERM', () => bot.stop('SIGTERM'));
