@@ -5,7 +5,7 @@ const BOT_TOKEN = '7099638631:AAHWoLCmXPsXa3yi-RRhw9htZj-IJEI6FjA';
 const bot = new Telegraf(BOT_TOKEN);
 
 bot.start((ctx) => {
-  return ctx.reply(
+  ctx.reply(
     'Добро пожаловать на курс! Давайте проверим, готовы ли вы к прохождению?',
     {
       reply_markup: {
@@ -42,14 +42,12 @@ const server = http.createServer((req, res) => {
   if (req.method === 'GET' && req.url === '/') {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     res.end('OK');
-    return;
-  }
-  if (req.method === 'POST' && req.url === '/') {
+  } else if (req.method === 'POST' && req.url === '/') {
     bot.webhookCallback('/', false)(req, res);
-    return;
+  } else {
+    res.writeHead(404);
+    res.end();
   }
-  res.writeHead(404);
-  res.end('Not found');
 });
 
 const PORT = process.env.PORT || 3000;
