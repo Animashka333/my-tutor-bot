@@ -3,6 +3,13 @@ const { Telegraf } = require('telegraf');
 const BOT_TOKEN = '7099638631:AAHWoLCmXPsXa3yi-RRhw9htZj-IJEI6FjA';
 const bot = new Telegraf(BOT_TOKEN);
 
+// ВРЕМЕННЫЙ КОД - удалить после получения file_id
+bot.on('photo', (ctx) => {
+  const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
+  ctx.reply(`File ID вашей картинки: ${fileId}`);
+});
+
+
 // ID приватной группы
 const GROUP_ID = '-1002008510442'; // ✅ Ваш реальный ID группы
 
