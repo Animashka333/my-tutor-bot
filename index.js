@@ -10,7 +10,7 @@ bot.start((ctx) => {
     {
       reply_markup: {
         inline_keyboard: [
-          [{ text: 'Проверить', callback_ 'check_ready' }]
+          [{ text: 'Проверить', callback_data 'check_ready' }]
         ]
       }
     }
