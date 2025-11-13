@@ -77,9 +77,8 @@ const server = http.createServer((req, res) => {
 // ==================== ФУНКЦИИ ТЕСТИРОВАНИЯ ====================
 
 // Функция отправки вопроса с Quiz
-async function sendQuizQuestion(ctx, questionIndex) {
+async function sendQuizQuestion(userId, questionIndex) {
   const question = QUESTIONS[questionIndex];
-  const userId = ctx.from.id;
   
   console.log(`📝 Отправляем вопрос ${questionIndex + 1} пользователю ${userId}`);
   
@@ -89,8 +88,9 @@ async function sendQuizQuestion(ctx, questionIndex) {
   });
   
   try {
-    // Отправляем вопрос как Quiz
-    await ctx.replyWithPoll(
+    // Отправляем вопрос как Quiz через bot.telegram
+    await bot.telegram.sendPoll(
+      userId,
       `❓ Вопрос ${questionIndex + 1}/3:\n\n${question.text}`,
       question.options,
       {
@@ -109,44 +109,35 @@ async function sendQuizQuestion(ctx, questionIndex) {
 }
 
 // Функция отправки следующего вопроса
-async function sendNextQuestion(ctx, userId) {
-  const userData = userProgress.get(userId);
-  
-  if (!userData) {
-    console.log('❌ Данные пользователя не найдены');
-    return;
-  }
-  
-  const currentQuestion = userData.currentQuestion;
-  const nextQuestionIndex = currentQuestion + 1;
+async function sendNextQuestion(userId, currentQuestionIndex) {
+  const nextQuestionIndex = currentQuestionIndex + 1;
   
   console.log(`➡️ Переход к вопросу ${nextQuestionIndex + 1} для пользователя ${userId}`);
   
   if (nextQuestionIndex < QUESTIONS.length) {
     // Ждем 2 секунды перед следующим вопросом
     setTimeout(async () => {
-      await sendQuizQuestion(ctx, nextQuestionIndex);
+      await sendQuizQuestion(userId, nextQuestionIndex);
     }, 2000);
   } else {
     // Все вопросы пройдены
     console.log(`🎉 Пользователь ${userId} завершил тест`);
     setTimeout(async () => {
-      await sendTestCompletion(ctx);
+      await sendTestCompletion(userId);
     }, 2000);
   }
 }
 
 // Функция завершения теста
-async function sendTestCompletion(ctx) {
-  const userId = ctx.from.id;
-  
+async function sendTestCompletion(userId) {
   console.log(`🏁 Отправляем завершение теста для пользователя ${userId}`);
   
   // Удаляем прогресс пользователя
   userProgress.delete(userId);
   
   // Отправляем финальное сообщение с картинкой
-  await ctx.replyWithPhoto(
+  await bot.telegram.sendPhoto(
+    userId,
     PHOTO_FILE_ID,
     {
       caption: '🎊 Прекрасно! Ты молодец! Погнали дальше? 😊',
@@ -278,62 +269,38 @@ bot.action('lesson_1_watched', async (ctx) => {
 // Запуск тестирования после завершения урока
 bot.action('lesson_1_completed', async (ctx) => {
   ctx.answerCbQuery();
+  const userId = ctx.from.id;
   
-  console.log(`🎯 Начинаем тестирование для пользователя ${ctx.from.id}`);
+  console.log(`🎯 Начинаем тестирование для пользователя ${userId}`);
   
   // Отправляем приветственное сообщение перед тестом
   await ctx.reply('Отлично! Проверим твою память? 😊');
   
   // Ждем немного и начинаем тестирование с первого вопроса
   setTimeout(async () => {
-    await sendQuizQuestion(ctx, 0);
+    await sendQuizQuestion(userId, 0);
   }, 1500);
 });
 
-// Обработчик ответов на Quiz вопросы - КЛЮЧЕВОЙ ИСПРАВЛЕНИЕ!
+// Обработчик ответов на Quiz вопросы
 bot.on('poll_answer', async (ctx) => {
   const pollAnswer = ctx.pollAnswer;
   const userId = pollAnswer.user.id;
   
   console.log(`📊 Пользователь ${userId} ответил на опрос`);
   
-  // Используем ctx.telegram для отправки сообщений пользователю
-  try {
-    const userData = userProgress.get(userId);
+  // Получаем текущий вопрос пользователя
+  const userData = userProgress.get(userId);
+  
+  if (userData && userData.currentQuestion !== undefined) {
+    const currentQuestionIndex = userData.currentQuestion;
     
-    if (userData && userData.currentQuestion !== undefined) {
-      const currentQuestionIndex = userData.currentQuestion;
-      
-      console.log(`✅ Обрабатываем ответ на вопрос ${currentQuestionIndex + 1}`);
-      
-      // Отправляем следующий вопрос через ctx.telegram
-      const nextQuestionIndex = currentQuestionIndex + 1;
-      
-      if (nextQuestionIndex < QUESTIONS.length) {
-        setTimeout(async () => {
-          await ctx.telegram.sendMessage(
-            userId,
-            `❓ Вопрос ${nextQuestionIndex + 1}/3:\n\n${QUESTIONS[nextQuestionIndex].text}`,
-            {
-              reply_markup: {
-                inline_keyboard: [
-                  QUESTIONS[nextQuestionIndex].options.map((option, index) => 
-                    ({ text: option, callback_data: `answer_${nextQuestionIndex}_${index}` })
-                  )
-                ]
-              }
-            }
-          );
-        }, 2000);
-      } else {
-        // Все вопросы пройдены
-        setTimeout(async () => {
-          await sendTestCompletion({ ...ctx, from: { id: userId } });
-        }, 2000);
-      }
-    }
-  } catch (error) {
-    console.error('❌ Ошибка обработки ответа:', error);
+    console.log(`✅ Обрабатываем ответ на вопрос ${currentQuestionIndex + 1}`);
+    
+    // Отправляем следующий вопрос
+    await sendNextQuestion(userId, currentQuestionIndex);
+  } else {
+    console.log('❌ Не найдены данные пользователя для обработки ответа');
   }
 });
 
