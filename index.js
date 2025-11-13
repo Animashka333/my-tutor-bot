@@ -10,11 +10,16 @@ const GROUP_LINK = 'https://t.me/+GFITSpvrpsQxZjcy';
 const TEACHER_USERNAME = '@Irina_Burtseva_333';
 const PRESENTATIONS_LINK = 'https://drive.google.com/drive/folders/1Xz5U6rU_IKscuTj3n1_xqWdITkDMVD00?usp=sharing';
 
-const TEACHER_PHOTO_FILE_ID = 'AgACAgIAAxkBAAIMOGkWITQjSUUznGjw9L1rObMsTNM8AAJuEmsb26CwSFk5-U2vxJ6BAQADAgADeQADNgQ'; // ✅ Новая картинка для приветствия учителя
-const QUIZ_END_PHOTO_FILE_ID = 'AgACAgIAAxkBAAIMIWkWEYKpBRe0YPXAWc9NTrwB7zJxAALWEWsb26CwSJRxk3uV9u6hAQADAgADeAADNgQ'; // ✅ Картинка для завершения теста
+const TEACHER_PHOTO_FILE_ID = 'AgACAgIAAxkBAAIMOGkWITQjSUUznGjw9L1rObMsTNM8AAJuEmsb26CwSFk5-U2vxJ6BAQADAgADeQADNgQ';
+const QUIZ_END_PHOTO_FILE_ID = 'AgACAgIAAxkBAAIMIWkWEYKpBRe0YPXAWc9NTrwB7zJxAALWEWsb26CwSJRxk3uV9u6hAQADAgADeAADNgQ';
 const LESSON_1_VIDEO_ID = 'BAACAgIAAxkBAAILEmkUcZ8uZ_OqxCOvMLHMxscHMT1hAALWhAACx7yoSAABJZ0DfMLJwzYE';
 const LESSON_1_PRESENTATION_ID = 'BQACAgIAAxkBAAILEGkUcXSoiRSVlLTghiLfcgpaOZXrAALThAACx7yoSCH7jmZckm_FNgQ';
 const KEYBOARD_IMAGE_ID = 'AgACAgIAAxkBAAILAAFpFG_ClIIPp47f5Q7gVQgCXI6IOgACFgtrG8e8qEh2VPMhVfW90gEAAwIAA3gAAzYE';
+
+// Урок 2 файлы
+const LESSON_2_VIDEO_ID = 'BAACAgIAAxkBAAIMdWkWJo7gEBwj838N0HxLwcz8MWdeAAKpjwAC26CwSNrGUyRF9xOoNgQ';
+const LESSON_2_PRESENTATION_ID = 'BQACAgIAAxkBAAIMd2kWJ5UMMRqgyM7CbldvrLGy8DtgAALAjwAC26CwSG0Pw_4OTuPSNgQ';
+const LESSON_2_ZIP_ID = 'BQACAgIAAxkBAAIMeWkWJ_T2ji6tJ40-C6Ed1bFioOoFAALDjwAC26CwSEgV_9f9t4SUNgQ';
 
 // ==================== ВОПРОСЫ ДЛЯ ТЕСТИРОВАНИЯ ====================
 const QUESTIONS = [
@@ -183,7 +188,7 @@ async function sendTestCompletion(userId) {
   // Отправляем финальное сообщение с НОВОЙ картинкой
   await bot.telegram.sendPhoto(
     userId,
-    QUIZ_END_PHOTO_FILE_ID, // ✅ Используется картинка для завершения теста
+    QUIZ_END_PHOTO_FILE_ID,
     {
       caption: '🎊 Прекрасно! Ты молодец! Погнали дальше? 😊',
       reply_markup: {
@@ -259,7 +264,7 @@ bot.action('continue_course', async (ctx) => {
 bot.action('next_step', async (ctx) => {
   ctx.answerCbQuery();
   
-  await ctx.replyWithPhoto(TEACHER_PHOTO_FILE_ID, { // ✅ Используется новая картинка для учителя
+  await ctx.replyWithPhoto(TEACHER_PHOTO_FILE_ID, {
     caption: 'Привет! Меня зовут Ирина Бурцева, я твой учитель! Мы будем изучать как устроен компьютер и что в нем можно делать.',
     parse_mode: 'HTML',
     reply_markup: {
@@ -350,12 +355,43 @@ bot.on('poll_answer', async (ctx) => {
   }
 });
 
-// Обработчик перехода к следующему уроку после теста
-bot.action('next_lesson_after_test', (ctx) => {
+// Обработчик перехода к Уроку 2 после теста
+bot.action('next_lesson_after_test', async (ctx) => {
   ctx.answerCbQuery();
-  return ctx.reply('🎉 Поздравляю с завершением Урока 1!\n\nСледующий урок будет доступен скоро...', {
-    reply_markup: { inline_keyboard: [[{ text: 'Урок 2', callback_data: 'lesson_2' }]] }
+  
+  // 1. Отправляем видео Урока 2
+  await ctx.replyWithVideo(LESSON_2_VIDEO_ID, {
+    caption: '<b>Урок 2. Как хранить и переносить информацию.</b>',
+    parse_mode: 'HTML'
   });
+  
+  // 2. Отправляем PDF презентацию
+  await ctx.replyWithDocument(LESSON_2_PRESENTATION_ID, {
+    caption: '<b>Презентация к уроку 2.</b>',
+    parse_mode: 'HTML'
+  });
+  
+  // 3. Отправляем ZIP архив с дополнительными файлами
+  await ctx.replyWithDocument(LESSON_2_ZIP_ID, {
+    caption: '<b>Дополнительные файлы к уроку 2.</b>',
+    parse_mode: 'HTML'
+  });
+  
+  // 4. Отправляем инструкцию с кнопкой
+  await ctx.reply(
+    'Жми кнопку "Просмотрено", когда посмотришь урок и сделаешь задания 👇',
+    {
+      reply_markup: {
+        inline_keyboard: [[{ text: '✅ Просмотрено', callback_data: 'lesson_2_watched' }]]
+      }
+    }
+  );
+});
+
+// Обработчик для кнопки "Просмотрено" после Урока 2
+bot.action('lesson_2_watched', async (ctx) => {
+  ctx.answerCbQuery();
+  await ctx.reply('🎉 Поздравляю с завершением Урока 2! Следующий урок будет доступен скоро...');
 });
 
 // Текстовые сообщения
