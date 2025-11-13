@@ -15,11 +15,47 @@ const LESSON_1_VIDEO_ID = 'BAACAgIAAxkBAAILEmkUcZ8uZ_OqxCOvMLHMxscHMT1hAALWhAACx
 const LESSON_1_PRESENTATION_ID = 'BQACAgIAAxkBAAILEGkUcXSoiRSVlLTghiLfcgpaOZXrAALThAACx7yoSCH7jmZckm_FNgQ';
 const KEYBOARD_IMAGE_ID = 'AgACAgIAAxkBAAILAAFpFG_ClIIPp47f5Q7gVQgCXI6IOgACFgtrG8e8qEh2VPMhVfW90gEAAwIAA3gAAzYE';
 
+// ==================== ВОПРОСЫ ДЛЯ ТЕСТИРОВАНИЯ ====================
+const QUESTIONS = [
+  {
+    id: 1,
+    text: "Как человек воспринимает информацию?",
+    options: [
+      "С помощью телевизора и компьютера",
+      "С помощью органов чувств: зрения, обоняния, осязания, вкуса и слуха",
+      "Через книжки и журналы"
+    ],
+    correct: 1 // Индекс правильного ответа (начинается с 0)
+  },
+  {
+    id: 2,
+    text: "Как компьютер воспринимает информацию?",
+    options: [
+      "С помощью клавиатуры, мышки, микрофона и веб камеры",
+      "Ищет сам на разных сайтах в интернете",
+      "Сканирует документы и картинки, которые человек помещает в него"
+    ],
+    correct: 0
+  },
+  {
+    id: 3,
+    text: "Как называется мозг компьютера?",
+    options: [
+      "Жесткий диск",
+      "Монитор", 
+      "Процессор"
+    ],
+    correct: 2
+  }
+];
+
+// Хранилище прогресса пользователей
+const userProgress = new Map();
+
 // ==================== HTTP СЕРВЕР ДЛЯ CRON-JOB ====================
 const server = http.createServer((req, res) => {
   console.log('📨 Получен запрос:', req.method, req.url);
   
-  // Обрабатываем GET запросы для пинга
   if (req.method === 'GET') {
     res.writeHead(200, { 
       'Content-Type': 'text/plain',
@@ -29,16 +65,116 @@ const server = http.createServer((req, res) => {
     return;
   }
   
-  // Обрабатываем POST запросы от Telegram
   if (req.method === 'POST' && req.url === '/') {
     bot.webhookCallback('/')(req, res);
     return;
   }
   
-  // Все остальные запросы - 404
   res.writeHead(404);
   res.end('Not found');
 });
+
+// ==================== ФУНКЦИИ ТЕСТИРОВАНИЯ ====================
+
+// Функция отправки вопроса
+async function sendQuestion(ctx, questionIndex) {
+  const question = QUESTIONS[questionIndex];
+  const userId = ctx.from.id;
+  
+  // Сохраняем текущий вопрос для пользователя
+  if (!userProgress.has(userId)) {
+    userProgress.set(userId, { currentQuestion: questionIndex });
+  } else {
+    userProgress.get(userId).currentQuestion = questionIndex;
+  }
+  
+  // Создаем inline-кнопки для вариантов ответа
+  const keyboard = question.options.map((option, index) => [
+    { 
+      text: option, 
+      callback_data: `answer_${questionIndex}_${index}` 
+    }
+  ]);
+  
+  // Отправляем вопрос с кнопками
+  const message = await ctx.reply(
+    `❓ Вопрос ${questionIndex + 1}/3:\n\n${question.text}`,
+    {
+      reply_markup: {
+        inline_keyboard: keyboard
+      }
+    }
+  );
+  
+  // Сохраняем ID сообщения с вопросом
+  if (userProgress.has(userId)) {
+    userProgress.get(userId).questionMessageId = message.message_id;
+  }
+}
+
+// Функция обработки ответа
+async function handleAnswer(ctx, questionIndex, answerIndex) {
+  const userId = ctx.from.id;
+  const question = QUESTIONS[questionIndex];
+  const isCorrect = answerIndex === question.correct;
+  
+  ctx.answerCbQuery();
+  
+  if (isCorrect) {
+    // ✅ Правильный ответ
+    // Отправляем анимацию салюта
+    await ctx.replyWithAnimation(
+      'CgACAgIAAxkBAAIL...', // Замените на реальный file_id анимации салюта
+      { caption: '🎉 Правильно! Молодец!' }
+    );
+    
+    // Ждем немного перед следующим вопросом
+    setTimeout(async () => {
+      if (questionIndex < QUESTIONS.length - 1) {
+        // Следующий вопрос
+        await sendQuestion(ctx, questionIndex + 1);
+      } else {
+        // Все вопросы пройдены
+        await sendTestCompletion(ctx);
+      }
+    }, 1500);
+    
+  } else {
+    // ❌ Неправильный ответ
+    const userData = userProgress.get(userId);
+    
+    // Удаляем сообщение с вопросом
+    if (userData && userData.questionMessageId) {
+      try {
+        await ctx.deleteMessage(userData.questionMessageId);
+      } catch (error) {
+        console.log('Не удалось удалить сообщение:', error);
+      }
+    }
+    
+    // Отправляем тот же вопрос заново
+    await sendQuestion(ctx, questionIndex);
+  }
+}
+
+// Функция завершения теста
+async function sendTestCompletion(ctx) {
+  // Удаляем прогресс пользователя
+  userProgress.delete(ctx.from.id);
+  
+  // Отправляем финальное сообщение с картинкой
+  await ctx.replyWithPhoto(
+    PHOTO_FILE_ID, // Используем существующую картинку или замените на специальную для теста
+    {
+      caption: '🎊 Прекрасно! Ты молодец! Погнали дальше? 😊',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: 'Следующий урок', callback_data: 'next_lesson_after_test' }]
+        ]
+      }
+    }
+  );
+}
 
 // ==================== ОСНОВНЫЕ ОБРАБОТЧИКИ ====================
 
@@ -156,7 +292,25 @@ bot.action('lesson_1_watched', async (ctx) => {
   });
 });
 
-bot.action('lesson_1_completed', (ctx) => {
+// Запуск тестирования после завершения урока
+bot.action('lesson_1_completed', async (ctx) => {
+  ctx.answerCbQuery();
+  
+  // Начинаем тестирование с первого вопроса
+  await sendQuestion(ctx, 0);
+});
+
+// Обработчик ответов на вопросы теста
+bot.action(/answer_(\d+)_(\d+)/, async (ctx) => {
+  const match = ctx.match;
+  const questionIndex = parseInt(match[1]);
+  const answerIndex = parseInt(match[2]);
+  
+  await handleAnswer(ctx, questionIndex, answerIndex);
+});
+
+// Обработчик перехода к следующему уроку после теста
+bot.action('next_lesson_after_test', (ctx) => {
   ctx.answerCbQuery();
   return ctx.reply('🎉 Поздравляю с завершением Урока 1!\n\nСледующий урок будет доступен скоро...', {
     reply_markup: { inline_keyboard: [[{ text: 'Урок 2', callback_data: 'lesson_2' }]] }
@@ -177,7 +331,6 @@ server.listen(PORT, () => {
   console.log(`✅ Сервер запущен на порту ${PORT}`);
   console.log(`✅ Cron-job.org может пинговать любой URL`);
   
-  // Запускаем бота через polling
   bot.launch().then(() => {
     console.log('✅ Бот запущен в режиме polling');
   }).catch(err => {
