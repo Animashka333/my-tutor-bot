@@ -10,7 +10,8 @@ const GROUP_LINK = 'https://t.me/+GFITSpvrpsQxZjcy';
 const TEACHER_USERNAME = '@Irina_Burtseva_333';
 const PRESENTATIONS_LINK = 'https://drive.google.com/drive/folders/1Xz5U6rU_IKscuTj3n1_xqWdITkDMVD00?usp=sharing';
 
-const PHOTO_FILE_ID = 'AgACAgIAAxkBAAIMCmkV2zjemnX7Dz_CF8nt97GFFot7AAKiD2sb26CwSNbqfQM1zKo_AQADAgADeAADNgQ'; // ✅ Новая картинка для завершения теста
+const TEACHER_PHOTO_FILE_ID = 'AgACAgIAAxkBAAIMOGkWITQjSUUznGjw9L1rObMsTNM8AAJuEmsb26CwSFk5-U2vxJ6BAQADAgADeQADNgQ'; // ✅ Новая картинка для приветствия учителя
+const QUIZ_END_PHOTO_FILE_ID = 'AgACAgIAAxkBAAIMIWkWEYKpBRe0YPXAWc9NTrwB7zJxAALWEWsb26CwSJRxk3uV9u6hAQADAgADeAADNgQ'; // ✅ Картинка для завершения теста
 const LESSON_1_VIDEO_ID = 'BAACAgIAAxkBAAILEmkUcZ8uZ_OqxCOvMLHMxscHMT1hAALWhAACx7yoSAABJZ0DfMLJwzYE';
 const LESSON_1_PRESENTATION_ID = 'BQACAgIAAxkBAAILEGkUcXSoiRSVlLTghiLfcgpaOZXrAALThAACx7yoSCH7jmZckm_FNgQ';
 const KEYBOARD_IMAGE_ID = 'AgACAgIAAxkBAAILAAFpFG_ClIIPp47f5Q7gVQgCXI6IOgACFgtrG8e8qEh2VPMhVfW90gEAAwIAA3gAAzYE';
@@ -182,7 +183,7 @@ async function sendTestCompletion(userId) {
   // Отправляем финальное сообщение с НОВОЙ картинкой
   await bot.telegram.sendPhoto(
     userId,
-    PHOTO_FILE_ID, // ✅ Используется новая картинка
+    QUIZ_END_PHOTO_FILE_ID, // ✅ Используется картинка для завершения теста
     {
       caption: '🎊 Прекрасно! Ты молодец! Погнали дальше? 😊',
       reply_markup: {
@@ -258,7 +259,7 @@ bot.action('continue_course', async (ctx) => {
 bot.action('next_step', async (ctx) => {
   ctx.answerCbQuery();
   
-  await ctx.replyWithPhoto(PHOTO_FILE_ID, {
+  await ctx.replyWithPhoto(TEACHER_PHOTO_FILE_ID, { // ✅ Используется новая картинка для учителя
     caption: 'Привет! Меня зовут Ирина Бурцева, я твой учитель! Мы будем изучать как устроен компьютер и что в нем можно делать.',
     parse_mode: 'HTML',
     reply_markup: {
