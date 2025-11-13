@@ -76,8 +76,8 @@ const server = http.createServer((req, res) => {
 
 // ==================== ФУНКЦИИ ТЕСТИРОВАНИЯ ====================
 
-// Функция отправки вопроса с Quiz
-async function sendQuizQuestion(ctx, questionIndex) {
+// Функция отправки вопроса с inline-кнопками (стилизованными под кружочки)
+async function sendQuestion(ctx, questionIndex) {
   const question = QUESTIONS[questionIndex];
   const userId = ctx.from.id;
   
@@ -86,59 +86,86 @@ async function sendQuizQuestion(ctx, questionIndex) {
   // Сохраняем текущий вопрос для пользователя
   userProgress.set(userId, { 
     currentQuestion: questionIndex,
-    pollMessageId: null
+    questionMessageId: null
   });
   
+  // Создаем красивые кнопки с кружочками
+  const keyboard = question.options.map((option, index) => [
+    { 
+      text: `⚪ ${option}`, 
+      callback_data: `answer_${questionIndex}_${index}` 
+    }
+  ]);
+  
   try {
-    // Отправляем вопрос как Quiz
-    const message = await ctx.replyWithPoll(
+    // Отправляем вопрос с кнопками
+    const message = await ctx.reply(
       `❓ Вопрос ${questionIndex + 1}/3:\n\n${question.text}`,
-      question.options,
       {
-        type: 'quiz',
-        correct_option_id: question.correct,
-        is_anonymous: false,
-        allows_multiple_answers: false
+        reply_markup: {
+          inline_keyboard: keyboard
+        }
       }
     );
     
-    // Сохраняем ID сообщения с опросом
+    // Сохраняем ID сообщения с вопросом
     const userData = userProgress.get(userId);
-    userData.pollMessageId = message.message_id;
+    userData.questionMessageId = message.message_id;
     userProgress.set(userId, userData);
     
-    console.log(`✅ Вопрос ${questionIndex + 1} отправлен, ID сообщения: ${message.message_id}`);
+    console.log(`✅ Вопрос ${questionIndex + 1} отправлен, ID: ${message.message_id}`);
     
   } catch (error) {
     console.error('❌ Ошибка отправки вопроса:', error);
   }
 }
 
-// Функция отправки следующего вопроса
-async function sendNextQuestion(ctx, userId) {
-  const userData = userProgress.get(userId);
+// Функция обработки ответа
+async function handleAnswer(ctx, questionIndex, answerIndex) {
+  const userId = ctx.from.id;
+  const question = QUESTIONS[questionIndex];
+  const isCorrect = answerIndex === question.correct;
   
-  if (!userData) {
-    console.log('❌ Данные пользователя не найдены');
-    return;
-  }
+  // Отвечаем на callback запрос
+  await ctx.answerCbQuery();
   
-  const currentQuestion = userData.currentQuestion;
-  const nextQuestionIndex = currentQuestion + 1;
+  console.log(`📊 Пользователь ${userId} ответил ${isCorrect ? 'правильно' : 'неправильно'} на вопрос ${questionIndex + 1}`);
   
-  console.log(`➡️ Переход к вопросу ${nextQuestionIndex + 1} для пользователя ${userId}`);
-  
-  if (nextQuestionIndex < QUESTIONS.length) {
-    // Ждем 2 секунды перед следующим вопросом
+  if (isCorrect) {
+    // ✅ Правильный ответ
+    await ctx.reply('🎉 Правильно! Молодец!');
+    
+    // Ждем и переходим к следующему вопросу
     setTimeout(async () => {
-      await sendQuizQuestion(ctx, nextQuestionIndex);
-    }, 2000);
+      const nextQuestionIndex = questionIndex + 1;
+      if (nextQuestionIndex < QUESTIONS.length) {
+        await sendQuestion(ctx, nextQuestionIndex);
+      } else {
+        // Все вопросы пройдены
+        await sendTestCompletion(ctx);
+      }
+    }, 1500);
+    
   } else {
-    // Все вопросы пройдены
-    console.log(`🎉 Пользователь ${userId} завершил тест`);
+    // ❌ Неправильный ответ
+    const userData = userProgress.get(userId);
+    
+    // Удаляем сообщение с вопросом
+    if (userData && userData.questionMessageId) {
+      try {
+        await ctx.deleteMessage(userData.questionMessageId);
+      } catch (error) {
+        console.log('Не удалось удалить сообщение:', error);
+      }
+    }
+    
+    // Показываем сообщение и отправляем тот же вопрос заново
+    await ctx.reply('😔 Неправильно! Попробуй еще раз:');
+    
+    // Ждем и отправляем тот же вопрос
     setTimeout(async () => {
-      await sendTestCompletion(ctx);
-    }, 2000);
+      await sendQuestion(ctx, questionIndex);
+    }, 1000);
   }
 }
 
@@ -292,31 +319,17 @@ bot.action('lesson_1_completed', async (ctx) => {
   
   // Ждем немного и начинаем тестирование с первого вопроса
   setTimeout(async () => {
-    await sendQuizQuestion(ctx, 0);
+    await sendQuestion(ctx, 0);
   }, 1500);
 });
 
-// Обработчик ответов на Quiz вопросы
-bot.on('poll_answer', async (ctx) => {
-  const pollAnswer = ctx.pollAnswer;
-  const userId = pollAnswer.user.id;
-  const optionIds = pollAnswer.option_ids;
+// Обработчик ответов на вопросы
+bot.action(/answer_(\d+)_(\d+)/, async (ctx) => {
+  const match = ctx.match;
+  const questionIndex = parseInt(match[1]);
+  const answerIndex = parseInt(match[2]);
   
-  console.log(`📊 Пользователь ${userId} ответил на опрос, выбранные опции:`, optionIds);
-  
-  // Получаем текущий вопрос пользователя
-  const userData = userProgress.get(userId);
-  
-  if (userData && userData.currentQuestion !== undefined) {
-    const currentQuestionIndex = userData.currentQuestion;
-    
-    console.log(`✅ Обрабатываем ответ на вопрос ${currentQuestionIndex + 1}`);
-    
-    // Отправляем следующий вопрос
-    await sendNextQuestion(ctx, userId);
-  } else {
-    console.log('❌ Не найдены данные пользователя для обработки ответа');
-  }
+  await handleAnswer(ctx, questionIndex, answerIndex);
 });
 
 // Обработчик перехода к следующему уроку после теста
