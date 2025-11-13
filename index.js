@@ -74,6 +74,45 @@ const server = http.createServer((req, res) => {
   res.end('Not found');
 });
 
+// ==================== ВРЕМЕННЫЙ КОД ДЛЯ ПОЛУЧЕНИЯ FILE_ID ====================
+// УДАЛИТЕ ЭТОТ БЛОК ПОСЛЕ ПОЛУЧЕНИЯ ВСЕХ FILE_ID
+
+bot.on('video', (ctx) => {
+  const fileId = ctx.message.video.file_id;
+  ctx.reply(`🎬 File ID видео: ${fileId}`);
+});
+
+bot.on('document', (ctx) => {
+  const fileId = ctx.message.document.file_id;
+  const fileName = ctx.message.document.file_name;
+  ctx.reply(`📎 File ID документа (${fileName}): ${fileId}`);
+});
+
+bot.on('photo', (ctx) => {
+  const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
+  ctx.reply(`🖼️ File ID картинки: ${fileId}`);
+});
+
+bot.on('animation', (ctx) => {
+  const fileId = ctx.message.animation.file_id;
+  ctx.reply(`🎭 File ID анимации: ${fileId}`);
+});
+
+// Команда для получения ID группы
+bot.command('getgroupid', (ctx) => {
+  if (ctx.chat.type !== 'private') {
+    const message = `
+📋 Информация о группе:
+ID: <code>${ctx.chat.id}</code>
+Название: ${ctx.chat.title}
+Тип: ${ctx.chat.type}
+    `;
+    return ctx.reply(message, { parse_mode: 'HTML' });
+  } else {
+    return ctx.reply('Добавьте меня в группу и используйте команду /getgroupid там');
+  }
+});
+
 // ==================== ФУНКЦИИ ТЕСТИРОВАНИЯ ====================
 
 // Функция отправки вопроса с Quiz
