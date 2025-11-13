@@ -76,8 +76,8 @@ const server = http.createServer((req, res) => {
 
 // ==================== ФУНКЦИИ ТЕСТИРОВАНИЯ ====================
 
-// Функция отправки вопроса
-async function sendQuestion(ctx, questionIndex) {
+// Функция отправки вопроса с Quiz (кружочками)
+async function sendQuizQuestion(ctx, questionIndex) {
   const question = QUESTIONS[questionIndex];
   const userId = ctx.from.id;
   
@@ -88,21 +88,14 @@ async function sendQuestion(ctx, questionIndex) {
     userProgress.get(userId).currentQuestion = questionIndex;
   }
   
-  // Создаем inline-кнопки для вариантов ответа
-  const keyboard = question.options.map((option, index) => [
-    { 
-      text: option, 
-      callback_data: `answer_${questionIndex}_${index}` 
-    }
-  ]);
-  
-  // Отправляем вопрос с кнопками
-  const message = await ctx.reply(
+  // Отправляем вопрос как Quiz (с кружочками)
+  const message = await ctx.replyWithPoll(
     `❓ Вопрос ${questionIndex + 1}/3:\n\n${question.text}`,
+    question.options,
     {
-      reply_markup: {
-        inline_keyboard: keyboard
-      }
+      type: 'quiz',
+      correct_option_id: question.correct,
+      is_anonymous: false
     }
   );
   
@@ -112,49 +105,20 @@ async function sendQuestion(ctx, questionIndex) {
   }
 }
 
-// Функция обработки ответа
-async function handleAnswer(ctx, questionIndex, answerIndex) {
+// Функция обработки ответа на Quiz
+async function handleQuizAnswer(ctx, questionIndex) {
   const userId = ctx.from.id;
-  const question = QUESTIONS[questionIndex];
-  const isCorrect = answerIndex === question.correct;
   
-  ctx.answerCbQuery();
-  
-  if (isCorrect) {
-    // ✅ Правильный ответ
-    // Отправляем анимацию салюта
-    await ctx.replyWithAnimation(
-      'CgACAgIAAxkBAAIL...', // Замените на реальный file_id анимации салюта
-      { caption: '🎉 Правильно! Молодец!' }
-    );
-    
-    // Ждем немного перед следующим вопросом
-    setTimeout(async () => {
-      if (questionIndex < QUESTIONS.length - 1) {
-        // Следующий вопрос
-        await sendQuestion(ctx, questionIndex + 1);
-      } else {
-        // Все вопросы пройдены
-        await sendTestCompletion(ctx);
-      }
-    }, 1500);
-    
-  } else {
-    // ❌ Неправильный ответ
-    const userData = userProgress.get(userId);
-    
-    // Удаляем сообщение с вопросом
-    if (userData && userData.questionMessageId) {
-      try {
-        await ctx.deleteMessage(userData.questionMessageId);
-      } catch (error) {
-        console.log('Не удалось удалить сообщение:', error);
-      }
+  // Ждем немного перед следующим вопросом
+  setTimeout(async () => {
+    if (questionIndex < QUESTIONS.length - 1) {
+      // Следующий вопрос
+      await sendQuizQuestion(ctx, questionIndex + 1);
+    } else {
+      // Все вопросы пройдены
+      await sendTestCompletion(ctx);
     }
-    
-    // Отправляем тот же вопрос заново
-    await sendQuestion(ctx, questionIndex);
-  }
+  }, 2000);
 }
 
 // Функция завершения теста
@@ -164,7 +128,7 @@ async function sendTestCompletion(ctx) {
   
   // Отправляем финальное сообщение с картинкой
   await ctx.replyWithPhoto(
-    PHOTO_FILE_ID, // Используем существующую картинку или замените на специальную для теста
+    PHOTO_FILE_ID,
     {
       caption: '🎊 Прекрасно! Ты молодец! Погнали дальше? 😊',
       reply_markup: {
@@ -296,17 +260,28 @@ bot.action('lesson_1_watched', async (ctx) => {
 bot.action('lesson_1_completed', async (ctx) => {
   ctx.answerCbQuery();
   
-  // Начинаем тестирование с первого вопроса
-  await sendQuestion(ctx, 0);
+  // Отправляем приветственное сообщение перед тестом
+  await ctx.reply('Отлично! Проверим твою память? 😊');
+  
+  // Ждем немного и начинаем тестирование с первого вопроса
+  setTimeout(async () => {
+    await sendQuizQuestion(ctx, 0);
+  }, 1500);
 });
 
-// Обработчик ответов на вопросы теста
-bot.action(/answer_(\d+)_(\d+)/, async (ctx) => {
-  const match = ctx.match;
-  const questionIndex = parseInt(match[1]);
-  const answerIndex = parseInt(match[2]);
+// Обработчик ответов на Quiz вопросы
+bot.on('poll_answer', async (ctx) => {
+  const pollAnswer = ctx.pollAnswer;
+  const userId = ctx.pollAnswer.user.id;
   
-  await handleAnswer(ctx, questionIndex, answerIndex);
+  // Получаем текущий вопрос пользователя
+  const userData = userProgress.get(userId);
+  if (userData && userData.currentQuestion !== undefined) {
+    const questionIndex = userData.currentQuestion;
+    
+    // Обрабатываем ответ
+    await handleQuizAnswer(ctx, questionIndex);
+  }
 });
 
 // Обработчик перехода к следующему уроку после теста
