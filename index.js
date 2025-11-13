@@ -1,13 +1,13 @@
-const { Telegraf, Markup } = require('telegraf');
+const { Telegraf, Markup, session } = require('telegraf');
 
 // Константы для файлов
-const TEACHER_PHOTO_FILE_ID = 'AgACAgIAAxkBAAIK6GkUazRfErq8pL3GPs_s6f9aZvIRAAKYD2sbx7ygSLgE5jB6RB5qAQADAgADeQADNgQ';
+const PHOTO_FILE_ID = 'AgACAgIAAxkBAAIK6GkUazRfErq8pL3GPs_s6f9aZvIRAAKYD2sbx7ygSLgE5jB6RB5qAQADAgADeQADNgQ';
 const QUIZ_END_PHOTO_FILE_ID = 'AgACAgIAAxkBAAIMCmkV2zjemnX7Dz_CF8nt97GFFot7AAKiD2sb26CwSNbqfQM1zKo_AQADAgADeAADNgQ';
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
-// Хранилище для состояния пользователей (в памяти)
-const userStates = new Map();
+// Сессия для хранения состояния пользователя
+bot.use(session());
 
 // Данные квиза
 const quizData = {
@@ -40,27 +40,9 @@ const quizData = {
     ]
 };
 
-// Получить состояние пользователя
-const getUserState = (userId) => {
-    if (!userStates.has(userId)) {
-        userStates.set(userId, {});
-    }
-    return userStates.get(userId);
-};
-
-// Установить состояние пользователя
-const setUserState = (userId, state) => {
-    userStates.set(userId, state);
-};
-
-// Очистить состояние пользователя
-const clearUserState = (userId) => {
-    userStates.delete(userId);
-};
-
 // Приветственное сообщение от учителя
 const sendTeacherWelcome = async (ctx) => {
-    await ctx.replyWithPhoto(TEACHER_PHOTO_FILE_ID, {
+    await ctx.replyWithPhoto(PHOTO_FILE_ID, {
         caption: `👋 Привет, ${ctx.from.first_name}! Я твой учитель по React.\n\nДавай проверим твои знания! Готов начать квиз?`,
         reply_markup: Markup.inlineKeyboard([
             [Markup.button.callback('✅ Начать квиз', 'start_quiz')]
@@ -70,24 +52,18 @@ const sendTeacherWelcome = async (ctx) => {
 
 // Начало квиза
 const startQuiz = async (ctx) => {
-    const userId = ctx.from.id;
-    setUserState(userId, {
-        quiz: {
-            currentQuestion: 0,
-            score: 0,
-            answers: []
-        }
-    });
+    ctx.session.quiz = {
+        currentQuestion: 0,
+        score: 0,
+        answers: []
+    };
     
     await showQuestion(ctx);
 };
 
 // Показать вопрос
 const showQuestion = async (ctx) => {
-    const userId = ctx.from.id;
-    const userState = getUserState(userId);
-    const quiz = userState.quiz;
-    
+    const quiz = ctx.session.quiz;
     const questionData = quizData.questions[quiz.currentQuestion];
     
     const keyboard = Markup.inlineKeyboard(
@@ -104,10 +80,7 @@ const showQuestion = async (ctx) => {
 
 // Проверка ответа
 const checkAnswer = async (ctx, answerIndex) => {
-    const userId = ctx.from.id;
-    const userState = getUserState(userId);
-    const quiz = userState.quiz;
-    
+    const quiz = ctx.session.quiz;
     const questionData = quizData.questions[quiz.currentQuestion];
     
     const isCorrect = answerIndex === questionData.correct;
@@ -128,9 +101,6 @@ const checkAnswer = async (ctx, answerIndex) => {
     
     quiz.currentQuestion++;
     
-    // Сохраняем обновленное состояние
-    setUserState(userId, userState);
-    
     // Переход к следующему вопросу или завершение квиза
     if (quiz.currentQuestion < quizData.questions.length) {
         setTimeout(() => showQuestion(ctx), 1500);
@@ -141,10 +111,7 @@ const checkAnswer = async (ctx, answerIndex) => {
 
 // Завершение квиза
 const finishQuiz = async (ctx) => {
-    const userId = ctx.from.id;
-    const userState = getUserState(userId);
-    const quiz = userState.quiz;
-    
+    const quiz = ctx.session.quiz;
     const score = quiz.score;
     const total = quizData.questions.length;
     const percentage = Math.round((score / total) * 100);
@@ -160,7 +127,7 @@ const finishQuiz = async (ctx) => {
         message += `💪 Не расстраивайся! Повтори материал и попробуй снова!`;
     }
     
-    // Отправляем картинку в конце квиза
+    // Отправляем новую картинку в конце квиза
     await ctx.replyWithPhoto(QUIZ_END_PHOTO_FILE_ID, {
         caption: message,
         reply_markup: Markup.inlineKeyboard([
@@ -168,8 +135,8 @@ const finishQuiz = async (ctx) => {
         ]).reply_markup
     });
     
-    // Очищаем состояние пользователя
-    clearUserState(userId);
+    // Очищаем сессию
+    delete ctx.session.quiz;
 };
 
 // Обработчики команд
@@ -180,42 +147,21 @@ bot.command('quiz', (ctx) => {
 });
 
 // Обработчики callback-ов
-bot.action('start_quiz', async (ctx) => {
-    try {
-        await ctx.deleteMessage();
-    } catch (e) {
-        // Игнорируем ошибки удаления сообщения
-    }
-    await startQuiz(ctx);
+bot.action('start_quiz', (ctx) => {
+    ctx.deleteMessage();
+    startQuiz(ctx);
 });
 
-bot.action(/answer_(\d+)/, async (ctx) => {
+bot.action(/answer_(\d+)/, (ctx) => {
     const answerIndex = parseInt(ctx.match[1]);
-    try {
-        await ctx.deleteMessage();
-    } catch (e) {
-        // Игнорируем ошибки удаления сообщения
-    }
-    await checkAnswer(ctx, answerIndex);
-});
-
-// Обработка ошибок
-bot.catch((err, ctx) => {
-    console.error(`Error for ${ctx.updateType}:`, err);
+    ctx.deleteMessage();
+    checkAnswer(ctx, answerIndex);
 });
 
 // Запуск бота
-const startBot = async () => {
-    try {
-        await bot.launch();
-        console.log('Бот запущен!');
-    } catch (error) {
-        console.error('Ошибка запуска бота:', error);
-    }
-};
+bot.launch().then(() => {
+    console.log('Бот запущен!');
+});
 
-startBot();
-
-// Graceful shutdown
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
