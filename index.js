@@ -109,22 +109,27 @@ async function sendQuizQuestion(userId, questionIndex) {
 }
 
 // Функция отправки следующего вопроса
-async function sendNextQuestion(userId, currentQuestionIndex) {
-  const nextQuestionIndex = currentQuestionIndex + 1;
-  
-  console.log(`➡️ Переход к вопросу ${nextQuestionIndex + 1} для пользователя ${userId}`);
-  
-  if (nextQuestionIndex < QUESTIONS.length) {
-    // Ждем 2 секунды перед следующим вопросом
-    setTimeout(async () => {
+async function sendNextQuestion(userId, currentQuestionIndex, isCorrect) {
+  if (isCorrect) {
+    // Правильный ответ - переходим к следующему вопросу
+    const nextQuestionIndex = currentQuestionIndex + 1;
+    
+    console.log(`✅ Правильно! Переход к вопросу ${nextQuestionIndex + 1}`);
+    
+    if (nextQuestionIndex < QUESTIONS.length) {
+      // Сразу отправляем следующий вопрос
       await sendQuizQuestion(userId, nextQuestionIndex);
-    }, 2000);
-  } else {
-    // Все вопросы пройдены
-    console.log(`🎉 Пользователь ${userId} завершил тест`);
-    setTimeout(async () => {
+    } else {
+      // Все вопросы пройдены
+      console.log(`🎉 Пользователь ${userId} завершил тест`);
       await sendTestCompletion(userId);
-    }, 2000);
+    }
+  } else {
+    // Неправильный ответ - повторяем тот же вопрос
+    console.log(`❌ Неправильно! Повтор вопроса ${currentQuestionIndex + 1}`);
+    
+    // Сразу отправляем тот же вопрос заново
+    await sendQuizQuestion(userId, currentQuestionIndex);
   }
 }
 
@@ -266,39 +271,40 @@ bot.action('lesson_1_watched', async (ctx) => {
   });
 });
 
-// Запуск тестирования после завершения урока
+// Запуск тестирования после завершения урока - БЕЗ ЗАДЕРЖКИ
 bot.action('lesson_1_completed', async (ctx) => {
   ctx.answerCbQuery();
   const userId = ctx.from.id;
   
   console.log(`🎯 Начинаем тестирование для пользователя ${userId}`);
   
-  // Отправляем приветственное сообщение перед тестом
+  // Сразу отправляем приветственное сообщение и первый вопрос
   await ctx.reply('Отлично! Проверим твою память? 😊');
-  
-  // Ждем немного и начинаем тестирование с первого вопроса
-  setTimeout(async () => {
-    await sendQuizQuestion(userId, 0);
-  }, 1500);
+  await sendQuizQuestion(userId, 0);
 });
 
 // Обработчик ответов на Quiz вопросы
 bot.on('poll_answer', async (ctx) => {
   const pollAnswer = ctx.pollAnswer;
   const userId = pollAnswer.user.id;
+  const optionIds = pollAnswer.option_ids;
   
-  console.log(`📊 Пользователь ${userId} ответил на опрос`);
+  console.log(`📊 Пользователь ${userId} ответил на опрос, выбранные опции:`, optionIds);
   
   // Получаем текущий вопрос пользователя
   const userData = userProgress.get(userId);
   
   if (userData && userData.currentQuestion !== undefined) {
     const currentQuestionIndex = userData.currentQuestion;
+    const question = QUESTIONS[currentQuestionIndex];
     
-    console.log(`✅ Обрабатываем ответ на вопрос ${currentQuestionIndex + 1}`);
+    // Проверяем правильность ответа
+    const isCorrect = optionIds.length > 0 && optionIds[0] === question.correct;
     
-    // Отправляем следующий вопрос
-    await sendNextQuestion(userId, currentQuestionIndex);
+    console.log(`✅ Ответ ${isCorrect ? 'правильный' : 'неправильный'} на вопрос ${currentQuestionIndex + 1}`);
+    
+    // Отправляем следующий вопрос или повторяем текущий
+    await sendNextQuestion(userId, currentQuestionIndex, isCorrect);
   } else {
     console.log('❌ Не найдены данные пользователя для обработки ответа');
   }
