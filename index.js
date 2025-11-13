@@ -25,7 +25,7 @@ const QUESTIONS = [
       "С помощью органов чувств: зрения, обоняния, осязания, вкуса и слуха",
       "Через книжки и журналы"
     ],
-    correct: 1 // Индекс правильного ответа (начинается с 0)
+    correct: 1
   },
   {
     id: 2,
@@ -76,55 +76,80 @@ const server = http.createServer((req, res) => {
 
 // ==================== ФУНКЦИИ ТЕСТИРОВАНИЯ ====================
 
-// Функция отправки вопроса с Quiz (кружочками)
+// Функция отправки вопроса с Quiz
 async function sendQuizQuestion(ctx, questionIndex) {
   const question = QUESTIONS[questionIndex];
   const userId = ctx.from.id;
   
+  console.log(`📝 Отправляем вопрос ${questionIndex + 1} пользователю ${userId}`);
+  
   // Сохраняем текущий вопрос для пользователя
-  if (!userProgress.has(userId)) {
-    userProgress.set(userId, { currentQuestion: questionIndex });
-  } else {
-    userProgress.get(userId).currentQuestion = questionIndex;
-  }
+  userProgress.set(userId, { 
+    currentQuestion: questionIndex,
+    pollMessageId: null
+  });
   
-  // Отправляем вопрос как Quiz (с кружочками)
-  const message = await ctx.replyWithPoll(
-    `❓ Вопрос ${questionIndex + 1}/3:\n\n${question.text}`,
-    question.options,
-    {
-      type: 'quiz',
-      correct_option_id: question.correct,
-      is_anonymous: false
-    }
-  );
-  
-  // Сохраняем ID сообщения с вопросом
-  if (userProgress.has(userId)) {
-    userProgress.get(userId).questionMessageId = message.message_id;
+  try {
+    // Отправляем вопрос как Quiz
+    const message = await ctx.replyWithPoll(
+      `❓ Вопрос ${questionIndex + 1}/3:\n\n${question.text}`,
+      question.options,
+      {
+        type: 'quiz',
+        correct_option_id: question.correct,
+        is_anonymous: false,
+        allows_multiple_answers: false
+      }
+    );
+    
+    // Сохраняем ID сообщения с опросом
+    const userData = userProgress.get(userId);
+    userData.pollMessageId = message.message_id;
+    userProgress.set(userId, userData);
+    
+    console.log(`✅ Вопрос ${questionIndex + 1} отправлен, ID сообщения: ${message.message_id}`);
+    
+  } catch (error) {
+    console.error('❌ Ошибка отправки вопроса:', error);
   }
 }
 
-// Функция обработки ответа на Quiz
-async function handleQuizAnswer(ctx, questionIndex) {
-  const userId = ctx.from.id;
+// Функция отправки следующего вопроса
+async function sendNextQuestion(ctx, userId) {
+  const userData = userProgress.get(userId);
   
-  // Ждем немного перед следующим вопросом
-  setTimeout(async () => {
-    if (questionIndex < QUESTIONS.length - 1) {
-      // Следующий вопрос
-      await sendQuizQuestion(ctx, questionIndex + 1);
-    } else {
-      // Все вопросы пройдены
+  if (!userData) {
+    console.log('❌ Данные пользователя не найдены');
+    return;
+  }
+  
+  const currentQuestion = userData.currentQuestion;
+  const nextQuestionIndex = currentQuestion + 1;
+  
+  console.log(`➡️ Переход к вопросу ${nextQuestionIndex + 1} для пользователя ${userId}`);
+  
+  if (nextQuestionIndex < QUESTIONS.length) {
+    // Ждем 2 секунды перед следующим вопросом
+    setTimeout(async () => {
+      await sendQuizQuestion(ctx, nextQuestionIndex);
+    }, 2000);
+  } else {
+    // Все вопросы пройдены
+    console.log(`🎉 Пользователь ${userId} завершил тест`);
+    setTimeout(async () => {
       await sendTestCompletion(ctx);
-    }
-  }, 2000);
+    }, 2000);
+  }
 }
 
 // Функция завершения теста
 async function sendTestCompletion(ctx) {
+  const userId = ctx.from.id;
+  
+  console.log(`🏁 Отправляем завершение теста для пользователя ${userId}`);
+  
   // Удаляем прогресс пользователя
-  userProgress.delete(ctx.from.id);
+  userProgress.delete(userId);
   
   // Отправляем финальное сообщение с картинкой
   await ctx.replyWithPhoto(
@@ -260,6 +285,8 @@ bot.action('lesson_1_watched', async (ctx) => {
 bot.action('lesson_1_completed', async (ctx) => {
   ctx.answerCbQuery();
   
+  console.log(`🎯 Начинаем тестирование для пользователя ${ctx.from.id}`);
+  
   // Отправляем приветственное сообщение перед тестом
   await ctx.reply('Отлично! Проверим твою память? 😊');
   
@@ -272,15 +299,23 @@ bot.action('lesson_1_completed', async (ctx) => {
 // Обработчик ответов на Quiz вопросы
 bot.on('poll_answer', async (ctx) => {
   const pollAnswer = ctx.pollAnswer;
-  const userId = ctx.pollAnswer.user.id;
+  const userId = pollAnswer.user.id;
+  const optionIds = pollAnswer.option_ids;
+  
+  console.log(`📊 Пользователь ${userId} ответил на опрос, выбранные опции:`, optionIds);
   
   // Получаем текущий вопрос пользователя
   const userData = userProgress.get(userId);
+  
   if (userData && userData.currentQuestion !== undefined) {
-    const questionIndex = userData.currentQuestion;
+    const currentQuestionIndex = userData.currentQuestion;
     
-    // Обрабатываем ответ
-    await handleQuizAnswer(ctx, questionIndex);
+    console.log(`✅ Обрабатываем ответ на вопрос ${currentQuestionIndex + 1}`);
+    
+    // Отправляем следующий вопрос
+    await sendNextQuestion(ctx, userId);
+  } else {
+    console.log('❌ Не найдены данные пользователя для обработки ответа');
   }
 });
 
