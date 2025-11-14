@@ -58,65 +58,32 @@ const QUESTIONS = [
 // Хранилище прогресса пользователей
 const userProgress = new Map();
 
-// ==================== HTTP СЕРВЕР ДЛЯ CRON-JOB ====================
+// ==================== ПРОСТОЙ HTTP СЕРВЕР ДЛЯ CRON-JOB ====================
 const server = http.createServer((req, res) => {
   console.log('📨 Получен запрос:', req.method, req.url);
   
+  // Для всех GET запросов (включая от cron-job.org) возвращаем простой ответ
   if (req.method === 'GET') {
     res.writeHead(200, { 
       'Content-Type': 'text/plain',
-      'Access-Control-Allow-Origin': '*'
+      'Content-Length': 2 // ✅ Фиксируем маленький размер ответа
     });
-    res.end('OK - Bot is alive');
+    res.end('OK');
     return;
   }
   
+  // Для POST запросов от Telegram
   if (req.method === 'POST' && req.url === '/') {
     bot.webhookCallback('/')(req, res);
     return;
   }
   
-  res.writeHead(404);
+  // Для всех остальных запросов
+  res.writeHead(404, { 
+    'Content-Type': 'text/plain',
+    'Content-Length': 9 
+  });
   res.end('Not found');
-});
-
-// ==================== ВРЕМЕННЫЙ КОД ДЛЯ ПОЛУЧЕНИЯ FILE_ID ====================
-// УДАЛИТЕ ЭТОТ БЛОК ПОСЛЕ ПОЛУЧЕНИЯ ВСЕХ FILE_ID
-
-bot.on('video', (ctx) => {
-  const fileId = ctx.message.video.file_id;
-  ctx.reply(`🎬 File ID видео: ${fileId}`);
-});
-
-bot.on('document', (ctx) => {
-  const fileId = ctx.message.document.file_id;
-  const fileName = ctx.message.document.file_name;
-  ctx.reply(`📎 File ID документа (${fileName}): ${fileId}`);
-});
-
-bot.on('photo', (ctx) => {
-  const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
-  ctx.reply(`🖼️ File ID картинки: ${fileId}`);
-});
-
-bot.on('animation', (ctx) => {
-  const fileId = ctx.message.animation.file_id;
-  ctx.reply(`🎭 File ID анимации: ${fileId}`);
-});
-
-// Команда для получения ID группы
-bot.command('getgroupid', (ctx) => {
-  if (ctx.chat.type !== 'private') {
-    const message = `
-📋 Информация о группе:
-ID: <code>${ctx.chat.id}</code>
-Название: ${ctx.chat.title}
-Тип: ${ctx.chat.type}
-    `;
-    return ctx.reply(message, { parse_mode: 'HTML' });
-  } else {
-    return ctx.reply('Добавьте меня в группу и используйте команду /getgroupid там');
-  }
 });
 
 // ==================== ФУНКЦИИ ТЕСТИРОВАНИЯ ====================
